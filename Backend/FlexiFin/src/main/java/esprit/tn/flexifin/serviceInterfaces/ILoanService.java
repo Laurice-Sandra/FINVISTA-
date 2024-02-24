@@ -25,5 +25,14 @@ public interface ILoanService {
 
     Map<String, Float> simulateLoan(Loan loan);
 
+     Map<String, Float> simulateLoan2( Loan loan);
+    Map<String, Float> simulateLoanWithConstantAmortizationPerYear( Loan loan);
+    Map<String, Float> simulateLoanWithConstantAmortizationPerMonth(Loan loan);
+
+    Map<String, Float> simulateLoanInFineByYear( Loan loan);
+    Map<String, Float> simulateLoanInFineByMonth( Loan loan);
+
+
+
     void generatePdf(LinkedHashMap<String, Float> loanSimulation) throws IOException;
 }

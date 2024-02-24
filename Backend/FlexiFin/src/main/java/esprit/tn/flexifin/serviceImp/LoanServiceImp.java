@@ -77,38 +77,7 @@ public class LoanServiceImp implements ILoanService {
         return monthlyIncome - (monthlyDebtPayments + monthlyExpenses);
     }
 
-/*
-    public Map<String, Float> simulateLoan(Loan loan) {
-        Map<String, Float> loanSimulation = new HashMap<>();
-        float monthlyInterestRate = loan.getInterestRate() / 12;
-        double monthlyPayment = (loan.getAmmountRequest() * monthlyInterestRate) / (1 - Math.pow(1 + monthlyInterestRate, -loan.getDuration()));
-        float remainingBalance = loan.getAmmountRequest();
-        float totalLoanCost = 0;
 
-        for (int year = 1; year <= loan.getDuration(); year++) {
-            float yearlyAmortization = 0;
-            float yearlyInterest = 0;
-            for (int month = 1; month <= 12; month++) {
-                double monthlyInterest = remainingBalance * monthlyInterestRate;
-                double monthlyAmortization = monthlyPayment - monthlyInterest;
-                if (remainingBalance < monthlyAmortization) {
-                    monthlyAmortization = remainingBalance;
-                }
-                remainingBalance -= monthlyAmortization;
-                yearlyAmortization += monthlyAmortization;
-                yearlyInterest += monthlyInterest;
-            }
-            loanSimulation.put("Year " + year + " - Amortization", yearlyAmortization);
-            loanSimulation.put("Year " + year + " - Interest", yearlyInterest);
-            loanSimulation.put("Year " + year + " - Monthly Payment", (float) monthlyPayment);
-            loanSimulation.put("Year " + year + " - Remaining Balance", remainingBalance);
-            totalLoanCost += yearlyInterest;
-        }
-
-        loanSimulation.put("Total Loan Cost", totalLoanCost);
-
-        return loanSimulation;
-    }*/
 public Map<String, Float> simulateLoan(Loan loan) {
     Map<String, Float> loanSimulation = new LinkedHashMap<>();
     float annualInterestRate = loan.getInterestRate();
@@ -141,6 +110,111 @@ public Map<String, Float> simulateLoan(Loan loan) {
 
     return loanSimulation;
 }
+
+    @Override
+    public Map<String, Float> simulateLoan2(@NotNull Loan loan) {
+        Map<String, Float> loanSimulation = new LinkedHashMap<>();
+        float annualInterestRate = loan.getInterestRate();
+        float monthlyInterestRate = annualInterestRate / 12;
+        int totalMonths = loan.getDuration() * 12;
+        double monthlyPayment = (loan.getAmmountRequest() * monthlyInterestRate) / (1 - Math.pow(1 + monthlyInterestRate, -totalMonths));
+        float remainingBalance = loan.getAmmountRequest();
+        float totalLoanCost = 0;
+
+        for (int month = 1; month <= totalMonths; month++) {
+            float interestForMonth = monthlyInterestRate * remainingBalance;
+            float monthlyAmortization = (float) (monthlyPayment - interestForMonth);
+
+            loanSimulation.put("Month " + month + " - Remaining Balance", remainingBalance);
+            loanSimulation.put("Month " + month + " - Amortization", monthlyAmortization);
+            loanSimulation.put("Month " + month + " - Interest", interestForMonth);
+            loanSimulation.put("Month " + month + " - Monthly Payment", (float) monthlyPayment);
+
+            remainingBalance -= monthlyAmortization;
+            totalLoanCost += interestForMonth;
+        }
+
+        loanSimulation.put("Total Loan Cost", totalLoanCost);
+
+        return loanSimulation;
+    }
+
+    @Override
+    public Map<String, Float> simulateLoanWithConstantAmortizationPerYear(@NotNull Loan loan) {
+        Map<String, Float> loanSimulation = new LinkedHashMap<>();
+        float annualInterestRate = loan.getInterestRate();
+        int totalYears = loan.getDuration();
+        float totalLoanCost = 0;
+
+        float yearlyAmortization = loan.getAmmountRequest() / totalYears;
+        float remainingBalance = loan.getAmmountRequest();
+
+        for (int year = 1; year <= totalYears; year++) {
+            float interestForYear = annualInterestRate * remainingBalance;
+            float annualPayment = yearlyAmortization + interestForYear;
+
+            loanSimulation.put("Year " + year + " - Remaining Balance", remainingBalance);
+            loanSimulation.put("Year " + year + " - Amortization", yearlyAmortization);
+            loanSimulation.put("Year " + year + " - Interest", interestForYear);
+            loanSimulation.put("Year " + year + " - Annual Payment", annualPayment);
+
+            totalLoanCost += interestForYear;
+            remainingBalance -= yearlyAmortization;
+        }
+
+        loanSimulation.put("Total Loan Cost", totalLoanCost);
+
+        return loanSimulation;
+    }
+    @Override
+    public Map<String, Float> simulateLoanWithConstantAmortizationPerMonth(Loan loan) {
+        Map<String, Float> loanSimulation = new LinkedHashMap<>();
+        float annualInterestRate = loan.getInterestRate();
+        int totalMonths = loan.getDuration() * 12;
+        float totalLoanCost = 0;
+
+        float monthlyAmortization = loan.getAmmountRequest() / totalMonths;
+        float remainingBalance = loan.getAmmountRequest();
+
+        for (int month = 1; month <= totalMonths; month++) {
+            float monthlyInterest = (annualInterestRate / 12) * remainingBalance;
+            float monthlyPayment = monthlyAmortization + monthlyInterest;
+
+            loanSimulation.put("Month " + month + " - Remaining Balance", remainingBalance);
+            loanSimulation.put("Month " + month + " - Amortization", monthlyAmortization);
+            loanSimulation.put("Month " + month + " - Interest", monthlyInterest);
+            loanSimulation.put("Month " + month + " - Monthly Payment", monthlyPayment);
+
+            totalLoanCost += monthlyInterest;
+            remainingBalance -= monthlyAmortization;
+        }
+
+        loanSimulation.put("Total Loan Cost", totalLoanCost);
+
+        return loanSimulation;
+    }
+    @Override
+    public Map<String, Float> simulateLoanInFineByYear(@NotNull Loan loan) {
+        Map<String, Float> loanSimulation = new LinkedHashMap<>();
+        float annualInterestRate = loan.getInterestRate();
+        float interestForYear = annualInterestRate * loan.getAmmountRequest();
+        float totalInterest = interestForYear * loan.getDuration();
+        loanSimulation.put( "  Yearly Interest", interestForYear);
+        loanSimulation.put("Total Loan", totalInterest);
+        return loanSimulation;
+    }
+
+    @Override
+    public Map<String, Float> simulateLoanInFineByMonth(@NotNull Loan loan) {
+        Map<String, Float> loanSimulation = new LinkedHashMap<>();
+        float monthlyInterestRate = loan.getInterestRate() / 12;
+        float monthlyInterest = monthlyInterestRate * loan.getAmmountRequest();
+        float totalInterest = monthlyInterest * loan.getDuration() * 12;
+        loanSimulation.put( "  Monthly Interest", monthlyInterest);
+        loanSimulation.put("Total LoanCost", totalInterest);
+        return loanSimulation;
+    }
+
 @Override
 //generation de pdf
 public void generatePdf(@NotNull LinkedHashMap<String, Float> loanSimulation) throws IOException {

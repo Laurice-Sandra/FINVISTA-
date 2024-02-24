@@ -48,4 +48,28 @@ public class LoanRestController {
     public void generatePdf(@RequestBody LinkedHashMap<String, Float> loanSimulation) throws IOException {
         iLoanService.generatePdf(loanSimulation);
     }
+@DeleteMapping("/deleteLoan/{idLoan}")
+    public void removeLoan(@PathVariable("idLoan") Long idLoan) {
+        iLoanService.removeLoan(idLoan);
+    }
+    @PostMapping("/simulate2")
+    public Map<String, Float> simulateLoan2(@RequestBody Loan loan) {
+        return iLoanService.simulateLoan2(loan);
+    }
+    @PostMapping("/simulateAY")
+    public Map<String, Float> simulateLoanWithConstantAmortizationPerYear(@RequestBody Loan loan) {
+        return iLoanService.simulateLoanWithConstantAmortizationPerYear(loan);
+    }
+    @PostMapping("/simulateAM")
+    public Map<String, Float> simulateLoanWithConstantAmortizationPerMonth(@RequestBody Loan loan) {
+        return iLoanService.simulateLoanWithConstantAmortizationPerMonth(loan);
+    }
+    @PostMapping("/simulateIfYear")
+    public Map<String, Float> simulateLoanInFineByYear(@RequestBody Loan loan) {
+        return iLoanService.simulateLoanInFineByYear(loan);
+    }
+    @PostMapping("/simulateIfMonth")
+    public Map<String, Float> simulateLoanInFineByMonth(@RequestBody Loan loan) {
+        return iLoanService.simulateLoanInFineByMonth(loan);
+    }
 }
