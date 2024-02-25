@@ -2,6 +2,7 @@ package esprit.tn.flexifin.serviceImp;
 
 import esprit.tn.flexifin.entities.Loan;
 import esprit.tn.flexifin.entities.LoanStatus;
+import esprit.tn.flexifin.entities.LoanType;
 import esprit.tn.flexifin.repositories.LoanRepository;
 import esprit.tn.flexifin.serviceInterfaces.ILoanService;
 import lombok.AllArgsConstructor;
@@ -13,6 +14,7 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.*;
 
 @Service
@@ -47,6 +49,43 @@ public class LoanServiceImp implements ILoanService {
 
         loanRepository.deleteById(idLoan);
     }
+
+    //SEMI DEFINE SERVICES (FILTERS)
+    @Override
+   public List<Loan> getLoanByStatus(LoanStatus status){
+return loanRepository.findByLoanStatus(status);
+   }
+    @Override
+    public List<Loan> getLoanByStartDate(LocalDate date){
+        return loanRepository.findByStartDate(date);
+    }
+    @Override
+    public List<Loan> getLoanByLoanType(LoanType loantype){
+        return loanRepository.findByLoantype(loantype);
+    }
+    @Override
+    public List<Loan> getLoanByUserId(Long idUser){
+        return loanRepository.findByUserId(idUser);
+    }
+
+
+
+   //LOAN APROVAL
+
+    /*public boolean approveLoan(Long userId) {
+        Profile profile = profileRepository.findByUserId(userId);
+        // Vérifiez les informations nécessaires dans le profil
+        if (profile != null && *//* Vérification des informations *//*) {
+            // Approuver le prêt
+            return true;
+        }
+        return false;
+    }*/
+
+
+
+
+
 
     //SERVICE
     //Simulation de pret

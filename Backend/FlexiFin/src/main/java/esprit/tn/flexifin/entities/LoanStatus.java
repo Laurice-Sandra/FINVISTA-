@@ -1,4 +1,4 @@
 package esprit.tn.flexifin.entities;
 
-public enum LoanStatus {Repaid,Default,InProgress
+public enum LoanStatus {Pending,Approved,InProgress,Repaid,Default
 }

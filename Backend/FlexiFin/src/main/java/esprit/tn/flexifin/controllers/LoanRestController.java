@@ -1,11 +1,14 @@
 package esprit.tn.flexifin.controllers;
 
 import esprit.tn.flexifin.entities.Loan;
+import esprit.tn.flexifin.entities.LoanStatus;
+import esprit.tn.flexifin.entities.LoanType;
 import esprit.tn.flexifin.serviceInterfaces.ILoanService;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +18,7 @@ import java.util.Map;
 @RequestMapping("/loan")
 public class LoanRestController {
     private ILoanService iLoanService;
+    //CRUD
 
     @GetMapping("/GetAllLoan")
     //@PreAuthorize("hasAnyAuthority('SCOPE_USER')")(what is preauthorized?)
@@ -40,6 +44,25 @@ public class LoanRestController {
         return this.iLoanService.updateLoan(loan);
     }
 
+    //FILTERS
+    @GetMapping("/getLoan/{status}")
+    public List<Loan> getLoanByStatus(@PathVariable("status") LoanStatus status) {
+        return iLoanService.getLoanByStatus(status);
+    }
+    @GetMapping("/getLoan/{date}")
+    public List<Loan> getLoanByStartDate(@PathVariable("date") LocalDate date) {
+        return iLoanService.getLoanByStartDate(date);
+    }
+    @GetMapping("/getLoan/{type}")
+    public List<Loan> getLoanByLoanType(@PathVariable("type") LoanType loantype) {
+        return iLoanService.getLoanByLoanType(loantype);
+    }
+    @GetMapping("/getLoan/{iduser}")
+    public List<Loan> getLoansByUserId(@PathVariable("iduser") Long idUser) {
+        return iLoanService.getLoanByUserId(idUser);
+    }
+
+    //SIMULATE SERVICES
     @PostMapping("/simulate")
     public Map<String, Float> simulateLoan(@RequestBody Loan loan) {
         return iLoanService.simulateLoan(loan);

@@ -3,9 +3,7 @@ package esprit.tn.flexifin.controllers;
 import esprit.tn.flexifin.entities.Account;
 import esprit.tn.flexifin.serviceInterfaces.IAccountService;
 import lombok.AllArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -17,8 +15,8 @@ public class AccountRestController {
     public List<Account> retrieveAllAccounts() {
         return iAccountService.retrieveAllAccounts();
     }
-
-    public Account addAccount(Account account) {
+    @PostMapping("/addAccount")
+    public Account addAccount(@RequestBody Account account) {
         return iAccountService.addAccount(account);
     }
 

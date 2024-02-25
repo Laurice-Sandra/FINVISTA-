@@ -1,9 +1,12 @@
 package esprit.tn.flexifin.serviceInterfaces;
 
 import esprit.tn.flexifin.entities.Loan;
+import esprit.tn.flexifin.entities.LoanStatus;
+import esprit.tn.flexifin.entities.LoanType;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,4 +38,12 @@ public interface ILoanService {
 
 
     void generatePdf(LinkedHashMap<String, Float> loanSimulation) throws IOException;
+
+    List<Loan> getLoanByStatus(LoanStatus status);
+
+    List<Loan> getLoanByStartDate(LocalDate date);
+    List<Loan> getLoanByLoanType(LoanType loantype);
+
+    public List<Loan> getLoanByUserId(Long idUser);
+
 }
