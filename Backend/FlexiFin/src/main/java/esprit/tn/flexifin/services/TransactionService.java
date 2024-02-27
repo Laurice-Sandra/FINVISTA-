@@ -6,7 +6,9 @@ import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import esprit.tn.flexifin.entities.TranStatus;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,7 +18,7 @@ public class TransactionService {
 
     private TransactionRepository transactionRepository;
 
-
+    //CRUD
     public Transaction createTransaction(Transaction transaction) {
         return transactionRepository.save(transaction);
     }
@@ -46,5 +48,26 @@ public class TransactionService {
                 .orElseThrow(() -> new RuntimeException("Transaction not found for this id :: " + transactionId));
         transactionRepository.delete(transaction);
     }
+
+    //FILTER
+    public List<Transaction> filterTransactionsByStatusAndDate(TranStatus status, Date date) {
+        return transactionRepository.findByStatusAndDate(status, date);
+    }
+    // SumByStatus
+    public Integer calculateSumByStatus(TranStatus status) {
+        return transactionRepository.sumTransactionsByStatus(status);
+    }
+
+    // SumByDate
+    public Integer calculateSumByDate(Date date) {
+        return transactionRepository.sumTransactionsByDate(date);
+    }
+
+
+    // Transaction history
+    public List<Transaction> getTransactionHistory(Long accountId) {
+        return transactionRepository.findByAccountId(accountId);
+    }
+
 
 }
