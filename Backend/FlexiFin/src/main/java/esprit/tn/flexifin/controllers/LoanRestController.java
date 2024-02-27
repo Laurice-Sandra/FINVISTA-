@@ -45,19 +45,20 @@ public class LoanRestController {
     }
 
     //FILTERS
-    @GetMapping("/getLoan/{status}")
+    @GetMapping("/getLoanbystatus/{status}")
     public List<Loan> getLoanByStatus(@PathVariable("status") LoanStatus status) {
         return iLoanService.getLoanByStatus(status);
     }
-    @GetMapping("/getLoan/{date}")
+    @GetMapping("/getLoanbyStartDate/{date}")
     public List<Loan> getLoanByStartDate(@PathVariable("date") LocalDate date) {
         return iLoanService.getLoanByStartDate(date);
     }
-    @GetMapping("/getLoan/{type}")
+    @GetMapping("/getLoanbyType/{type}")
     public List<Loan> getLoanByLoanType(@PathVariable("type") LoanType loantype) {
         return iLoanService.getLoanByLoanType(loantype);
     }
-    @GetMapping("/getLoan/{iduser}")
+
+    @GetMapping("/getLoanbyUser/{iduser}")
     public List<Loan> getLoansByUserId(@PathVariable("iduser") Long idUser) {
         return iLoanService.getLoanByUserId(idUser);
     }
