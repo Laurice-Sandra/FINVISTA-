@@ -29,6 +29,8 @@ public class AccountRestController {
     }
 
     IAccountService iAccountService;
-
-
+@PostMapping("addAccount/{idP}")
+    public Account addAccountForProfile(@PathVariable("idP") Long profileId, @RequestBody Account account) {
+        return iAccountService.addAccountForProfile(profileId, account);
+    }
 }

@@ -1,8 +1,7 @@
 package esprit.tn.flexifin.serviceImp;
 
-import esprit.tn.flexifin.entities.Loan;
-import esprit.tn.flexifin.entities.LoanStatus;
-import esprit.tn.flexifin.entities.LoanType;
+import esprit.tn.flexifin.entities.*;
+import esprit.tn.flexifin.repositories.AccountRepository;
 import esprit.tn.flexifin.repositories.LoanRepository;
 import esprit.tn.flexifin.serviceInterfaces.ILoanService;
 import lombok.AllArgsConstructor;
@@ -21,12 +20,19 @@ import java.util.*;
 @AllArgsConstructor
 public class LoanServiceImp implements ILoanService {
     LoanRepository loanRepository;
+    AccountRepository accountRepository;
 
     public List<Loan> retrieveAllLoans(){
         return loanRepository.findAll();
     }
 
     public Loan addLoan(Loan loan){
+        return loanRepository.save(loan);
+    }
+
+    public Loan addLoanAssignAccount(Loan loan, Long idAccount){
+            Account account = accountRepository.findById(idAccount).orElse(null);
+            loan.setAccount(account);
         return loanRepository.save(loan);
     }
 

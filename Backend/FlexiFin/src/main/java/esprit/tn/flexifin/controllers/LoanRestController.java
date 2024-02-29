@@ -31,6 +31,10 @@ public class LoanRestController {
     public Loan addLoan(@RequestBody Loan  loan) {
         return this.iLoanService.addLoan(loan);
     }
+    @PostMapping("addLoan/{idAc}")
+    public Loan addLoanAssignAccount(@RequestBody Loan loan,@PathVariable("idAc") Long idAccount) {
+        return iLoanService.addLoanAssignAccount(loan, idAccount);
+    }
 
     @GetMapping("/getLoan/{idLoan}")
     //@PreAuthorize("hasAnyAuthority('SCOPE_USER')")

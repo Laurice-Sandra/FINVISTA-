@@ -15,6 +15,7 @@ public interface ILoanService {
     List<Loan> retrieveAllLoans();
 
     Loan addLoan(Loan loan);
+    Loan addLoanAssignAccount(Loan loan, Long idAccount);
 
     Loan updateLoan (Loan loan);
 
