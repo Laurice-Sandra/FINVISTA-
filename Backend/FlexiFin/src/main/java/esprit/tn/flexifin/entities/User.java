@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 
 
 @Entity
@@ -17,6 +18,8 @@ public class User implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idUser;
     private String firstName;
+
+    private LocalDate birthDate;
 
     private String lastName;
 

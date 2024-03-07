@@ -1,5 +1,6 @@
 package esprit.tn.flexifin.controllers;
 
+import com.itextpdf.text.DocumentException;
 import esprit.tn.flexifin.entities.Loan;
 import esprit.tn.flexifin.entities.LoanStatus;
 import esprit.tn.flexifin.entities.LoanType;
@@ -7,11 +8,10 @@ import esprit.tn.flexifin.serviceInterfaces.ILoanService;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
+import java.io.FileNotFoundException;
 import java.time.LocalDate;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+
 
 @RestController
 @AllArgsConstructor
@@ -67,37 +67,32 @@ public class LoanRestController {
         return iLoanService.getLoanByUserId(idUser);
     }
 
-    //SIMULATE SERVICES
-    @PostMapping("/simulate")
-    public Map<String, Float> simulateLoan(@RequestBody Loan loan) {
-        return iLoanService.simulateLoan(loan);
-    }
-    @PostMapping("/generatepdf")
-    public void generatePdf(@RequestBody LinkedHashMap<String, Float> loanSimulation) throws IOException {
-        iLoanService.generatePdf(loanSimulation);
-    }
 @DeleteMapping("/deleteLoan/{idLoan}")
     public void removeLoan(@PathVariable("idLoan") Long idLoan) {
         iLoanService.removeLoan(idLoan);
     }
-    @PostMapping("/simulate2")
-    public Map<String, Float> simulateLoan2(@RequestBody Loan loan) {
-        return iLoanService.simulateLoan2(loan);
+
+
+
+
+@PutMapping("/generatetestpdf")
+    public String createLoanSimulationPdf(@RequestBody Loan loan) throws DocumentException, FileNotFoundException {
+        return iLoanService.createLoanSimulationPdf(loan);
     }
-    @PostMapping("/simulateAY")
-    public Map<String, Float> simulateLoanWithConstantAmortizationPerYear(@RequestBody Loan loan) {
-        return iLoanService.simulateLoanWithConstantAmortizationPerYear(loan);
+
+
+
+    @PutMapping("/simulateLoan")
+    public List<String[]> simulateLoan(@RequestBody Loan loan) {
+        return iLoanService.simulateLoan(loan);
     }
-    @PostMapping("/simulateAM")
-    public Map<String, Float> simulateLoanWithConstantAmortizationPerMonth(@RequestBody Loan loan) {
-        return iLoanService.simulateLoanWithConstantAmortizationPerMonth(loan);
+    @PostMapping("/updateTmm/{tmm}")
+    public String updateTmm(@PathVariable("tmm") float newTmm) {
+        iLoanService.updateTmm(newTmm);
+        return "TMM updated successfully to " + newTmm;
     }
-    @PostMapping("/simulateIfYear")
-    public Map<String, Float> simulateLoanInFineByYear(@RequestBody Loan loan) {
-        return iLoanService.simulateLoanInFineByYear(loan);
-    }
-    @PostMapping("/simulateIfMonth")
-    public Map<String, Float> simulateLoanInFineByMonth(@RequestBody Loan loan) {
-        return iLoanService.simulateLoanInFineByMonth(loan);
+@PutMapping("loanApproval/{idL}")
+    public String approveLoanById(@PathVariable("idL") Long loanId) throws DocumentException, FileNotFoundException {
+        return iLoanService.approveLoanById(loanId);
     }
 }

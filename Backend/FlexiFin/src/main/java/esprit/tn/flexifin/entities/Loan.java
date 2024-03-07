@@ -24,7 +24,7 @@ public class Loan implements Serializable {
     @Enumerated(EnumType.STRING)
      LoanType loantype;
     float interestRate;
-     float monthlyPayment;
+     float payment;
      float loanCost;
     @Enumerated(EnumType.STRING)
     RepaymentMethod repaymentMethod;

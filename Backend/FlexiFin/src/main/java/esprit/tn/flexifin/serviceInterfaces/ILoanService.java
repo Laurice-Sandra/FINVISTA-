@@ -1,10 +1,12 @@
 package esprit.tn.flexifin.serviceInterfaces;
 
+import com.itextpdf.text.DocumentException;
 import esprit.tn.flexifin.entities.Loan;
 import esprit.tn.flexifin.entities.LoanStatus;
 import esprit.tn.flexifin.entities.LoanType;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
@@ -23,22 +25,7 @@ public interface ILoanService {
 
     void removeLoan(Long idLoan);
 
-    //Map<String, Float> simulateLoan(float amount, int duration, float interestRate);
-
-    //public double calculateLoanCapacity(double monthlyIncome, double monthlyDebtPayments, double monthlyExpenses);
-
-    Map<String, Float> simulateLoan(Loan loan);
-
-     Map<String, Float> simulateLoan2( Loan loan);
-    Map<String, Float> simulateLoanWithConstantAmortizationPerYear( Loan loan);
-    Map<String, Float> simulateLoanWithConstantAmortizationPerMonth(Loan loan);
-
-    Map<String, Float> simulateLoanInFineByYear( Loan loan);
-    Map<String, Float> simulateLoanInFineByMonth( Loan loan);
-
-
-
-    void generatePdf(LinkedHashMap<String, Float> loanSimulation) throws IOException;
+    public double calculateLoanCapacity(double monthlyIncome, double monthlyDebtPayments, double monthlyExpenses);
 
     List<Loan> getLoanByStatus(LoanStatus status);
 
@@ -46,5 +33,18 @@ public interface ILoanService {
     List<Loan> getLoanByLoanType(LoanType loantype);
 
     public List<Loan> getLoanByUserId(Long idUser);
+
+
+
+    String createLoanSimulationPdf(Loan loan) throws DocumentException, FileNotFoundException;
+
+
+    List<String[]> simulateLoan(Loan loan);
+
+    void updateTmm(float newTmm);
+
+    double calculatePayment(float amount, float interestRate, int totalPeriods);
+
+    String approveLoanById(Long loanId) throws DocumentException, FileNotFoundException;
 
 }

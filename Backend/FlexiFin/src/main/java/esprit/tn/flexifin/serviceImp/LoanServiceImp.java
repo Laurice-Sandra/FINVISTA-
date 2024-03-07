@@ -1,41 +1,87 @@
 package esprit.tn.flexifin.serviceImp;
 
+import com.itextpdf.text.*;
+import com.itextpdf.text.pdf.PdfPTable;
+import com.itextpdf.text.pdf.PdfWriter;
 import esprit.tn.flexifin.entities.*;
 import esprit.tn.flexifin.repositories.AccountRepository;
 import esprit.tn.flexifin.repositories.LoanRepository;
+import esprit.tn.flexifin.repositories.ProfileRepository;
 import esprit.tn.flexifin.serviceInterfaces.ILoanService;
+import esprit.tn.flexifin.serviceInterfaces.IProfileService;
 import lombok.AllArgsConstructor;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.PDPageContentStream;
-import org.apache.pdfbox.pdmodel.font.PDType1Font;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.List;
 
 @Service
 @AllArgsConstructor
 public class LoanServiceImp implements ILoanService {
     LoanRepository loanRepository;
     AccountRepository accountRepository;
+    IProfileService iProfileService;
+    ProfileRepository profileRepository;
+    private static float tmm = 0.08f; // Valeur initiale du TMM, peut être configurée
+    private static final float FIXED_PART = 0.12F; // Partie fixe
 
+    @Override
+    public void updateTmm(float newTmm) {
+        LoanServiceImp.tmm = newTmm;
+    }
+
+    private float getInterestRate() {
+
+        return tmm + FIXED_PART;
+    }
+@Override
     public List<Loan> retrieveAllLoans(){
         return loanRepository.findAll();
     }
 
     public Loan addLoan(Loan loan){
+
         return loanRepository.save(loan);
     }
+@Override
+public Loan addLoanAssignAccount(Loan loan, Long idAccount) {
+    Optional<Account> accountOpt = accountRepository.findById(idAccount);
 
-    public Loan addLoanAssignAccount(Loan loan, Long idAccount){
-            Account account = accountRepository.findById(idAccount).orElse(null);
-            loan.setAccount(account);
-        return loanRepository.save(loan);
+    if (!accountOpt.isPresent()) {
+        // Gestion de compte non trouvé, retourner le prêt tel quel ou null
+        return null; // ou gestion alternative
     }
 
+    Account account = accountOpt.orElse(null);
+    loan.setInterestRate(getInterestRate()); // Assurez-vous que cette méthode existe et retourne un taux valide
+    loan.setAccount(account);
+
+    // Continuez seulement si le compte a un profil associé
+    if (account.getProfile() != null) {
+        Long profileId = account.getProfile().getIdProfile();
+
+        Optional<Profile> profileOpt = profileRepository.findById(profileId);
+        if (profileOpt.isPresent()) {
+            Profile profile = profileOpt.orElse(null);
+
+            // Calcul du score et de l'historique de prêt, puis mise à jour du profil
+            float hist = iProfileService.calculateLoanHistory(profileId);
+            float score = iProfileService.calculateProfileScore(profileId);
+
+            profile.setLoan_history((int) hist);
+            profile.setScore((int) score);
+
+            profileRepository.save(profile); // Sauvegardez les modifications du profil
+        }
+    }
+
+    return loanRepository.save(loan); // Sauvegardez et retournez le prêt
+}
+@Override
     public  Loan updateLoan (Loan loan){
         Optional<Loan> contratOptional = loanRepository.findById(loan.getIdLoan());
         if (contratOptional.isPresent()) {
@@ -46,11 +92,11 @@ public class LoanServiceImp implements ILoanService {
 
         return loanRepository.save(loan);
     }
-
+@Override
     public Loan retrieveLoan (Long idLoan){
         return loanRepository.findById(idLoan).orElse(null);
     }
-
+@Override
     public void removeLoan(Long idLoan){
 
         loanRepository.deleteById(idLoan);
@@ -76,227 +122,137 @@ return loanRepository.findByLoanStatus(status);
 
 
 
-   //LOAN APROVAL
-
-    /*public boolean approveLoan(Long userId) {
-        Profile profile = profileRepository.findByUserId(userId);
-        // Vérifiez les informations nécessaires dans le profil
-        if (profile != null && *//* Vérification des informations *//*) {
-            // Approuver le prêt
-            return true;
-        }
-        return false;
-    }*/
-
-
-
-
-
-
-    //SERVICE
-    //Simulation de pret
-
-    /*public String generateTemporaryId() {
-        // Génère un ID unique temporaire
-        return UUID.randomUUID().toString();
-    }*/
-
-    /*public Map<String, Float> simulateLoan(float amount, int duration, float interestRate) {
-        float monthlyPayment = calculateMonthlyPayment(amount, duration, interestRate);
-        float totalCost = monthlyPayment * duration;
-
-        Map<String, Float> result = new HashMap<>();
-        result.put("monthlyPayment", monthlyPayment);
-        result.put("totalCost", totalCost);
-
-        return result;
-
-    }*/
-
-    /*private float calculateMonthlyPayment(float amount, int duration, float interestRate) {
-        float monthlyInterestRate = interestRate / 12 / 100;
-        return (amount * monthlyInterestRate) / (1 - (float)Math.pow(1 + monthlyInterestRate, -duration));
-    }*/
 
     public double calculateLoanCapacity(double monthlyIncome, double monthlyDebtPayments, double monthlyExpenses) {
         return monthlyIncome - (monthlyDebtPayments + monthlyExpenses);
     }
+@Override
+    public List<String[]> simulateLoan(Loan loan) {
+        float interestRate = loan.getInterestRate();
+        RepaymentMethod repaymentMethod = loan.getRepaymentMethod();
+        int totalPeriods = repaymentMethod == RepaymentMethod.MENSUALITY ? loan.getDuration() * 12 : loan.getDuration();
+        float periodicInterestRate = repaymentMethod == RepaymentMethod.MENSUALITY ? interestRate / 12 : interestRate;
+        double payment = calculatePayment(loan.getAmmountRequest(), periodicInterestRate, totalPeriods);
 
+        List<String[]> simulationResults = new ArrayList<>();
+        String periodLabel = repaymentMethod == RepaymentMethod.MENSUALITY ? "Month" : "Year";
+        simulationResults.add(new String[]{periodLabel, "Remaining Balance", "Amortization", "Interest", "Payment"});
 
-public Map<String, Float> simulateLoan(Loan loan) {
-    Map<String, Float> loanSimulation = new LinkedHashMap<>();
-    float annualInterestRate = loan.getInterestRate();
-    double annualPayment = (loan.getAmmountRequest() * annualInterestRate) / (1 - Math.pow(1 + annualInterestRate, -loan.getDuration()));
-    float remainingBalance = loan.getAmmountRequest();
-    float totalLoanCost = 0;
-
-    for (int year = 1; year <= loan.getDuration(); year++) {
-        float interestForYear = annualInterestRate * remainingBalance;
-        float yearlyAmortization = (float) (annualPayment - interestForYear);
-
-        loanSimulation.put("Year " + year + " - Number", (float) year);
-        loanSimulation.put("Year " + year + " - Remaining Balance", remainingBalance);
-        loanSimulation.put("Year " + year + " - Amortization", yearlyAmortization);
-        loanSimulation.put("Year " + year + " - Interest", interestForYear);
-        loanSimulation.put("Year " + year + " - Annuity", (float) annualPayment);
-
-
-        totalLoanCost += interestForYear;
-
-        if (year < loan.getDuration()) {
-            remainingBalance -= yearlyAmortization;
-        }
-    }
-
-
-
-
-    loanSimulation.put("Total Loan Cost", totalLoanCost);
-
-    return loanSimulation;
-}
-
-    @Override
-    public Map<String, Float> simulateLoan2(@NotNull Loan loan) {
-        Map<String, Float> loanSimulation = new LinkedHashMap<>();
-        float annualInterestRate = loan.getInterestRate();
-        float monthlyInterestRate = annualInterestRate / 12;
-        int totalMonths = loan.getDuration() * 12;
-        double monthlyPayment = (loan.getAmmountRequest() * monthlyInterestRate) / (1 - Math.pow(1 + monthlyInterestRate, -totalMonths));
         float remainingBalance = loan.getAmmountRequest();
         float totalLoanCost = 0;
 
-        for (int month = 1; month <= totalMonths; month++) {
-            float interestForMonth = monthlyInterestRate * remainingBalance;
-            float monthlyAmortization = (float) (monthlyPayment - interestForMonth);
+        for (int period = 1; period <= totalPeriods; period++) {
+            float interestForPeriod = remainingBalance * periodicInterestRate;
+            float amortization = (float) (payment - interestForPeriod);
 
-            loanSimulation.put("Month " + month + " - Remaining Balance", remainingBalance);
-            loanSimulation.put("Month " + month + " - Amortization", monthlyAmortization);
-            loanSimulation.put("Month " + month + " - Interest", interestForMonth);
-            loanSimulation.put("Month " + month + " - Monthly Payment", (float) monthlyPayment);
 
-            remainingBalance -= monthlyAmortization;
-            totalLoanCost += interestForMonth;
+            simulationResults.add(new String[]{
+                    String.format("%s %d", periodLabel, period),
+                    String.format("%.2f", remainingBalance),
+                    String.format("%.2f", amortization),
+                    String.format("%.2f", interestForPeriod),
+                    String.format("%.2f", payment)
+            });
+            remainingBalance -= amortization;
+            totalLoanCost += interestForPeriod;
         }
 
-        loanSimulation.put("Total Loan Cost", totalLoanCost);
+        loan.setLoanCost(totalLoanCost);
+        loan.setPayment((float) payment);
+        // Sauvegardez l'entité Loan avec le coût total du prêt et payment mis à jour
+        loanRepository.save(loan);
 
-        return loanSimulation;
+        return simulationResults;
     }
 
-    @Override
-    public Map<String, Float> simulateLoanWithConstantAmortizationPerYear(@NotNull Loan loan) {
-        Map<String, Float> loanSimulation = new LinkedHashMap<>();
-        float annualInterestRate = loan.getInterestRate();
-        int totalYears = loan.getDuration();
-        float totalLoanCost = 0;
 
-        float yearlyAmortization = loan.getAmmountRequest() / totalYears;
-        float remainingBalance = loan.getAmmountRequest();
 
-        for (int year = 1; year <= totalYears; year++) {
-            float interestForYear = annualInterestRate * remainingBalance;
-            float annualPayment = yearlyAmortization + interestForYear;
-
-            loanSimulation.put("Year " + year + " - Remaining Balance", remainingBalance);
-            loanSimulation.put("Year " + year + " - Amortization", yearlyAmortization);
-            loanSimulation.put("Year " + year + " - Interest", interestForYear);
-            loanSimulation.put("Year " + year + " - Annual Payment", annualPayment);
-
-            totalLoanCost += interestForYear;
-            remainingBalance -= yearlyAmortization;
-        }
-
-        loanSimulation.put("Total Loan Cost", totalLoanCost);
-
-        return loanSimulation;
-    }
-    @Override
-    public Map<String, Float> simulateLoanWithConstantAmortizationPerMonth(Loan loan) {
-        Map<String, Float> loanSimulation = new LinkedHashMap<>();
-        float annualInterestRate = loan.getInterestRate();
-        int totalMonths = loan.getDuration() * 12;
-        float totalLoanCost = 0;
-
-        float monthlyAmortization = loan.getAmmountRequest() / totalMonths;
-        float remainingBalance = loan.getAmmountRequest();
-
-        for (int month = 1; month <= totalMonths; month++) {
-            float monthlyInterest = (annualInterestRate / 12) * remainingBalance;
-            float monthlyPayment = monthlyAmortization + monthlyInterest;
-
-            loanSimulation.put("Month " + month + " - Remaining Balance", remainingBalance);
-            loanSimulation.put("Month " + month + " - Amortization", monthlyAmortization);
-            loanSimulation.put("Month " + month + " - Interest", monthlyInterest);
-            loanSimulation.put("Month " + month + " - Monthly Payment", monthlyPayment);
-
-            totalLoanCost += monthlyInterest;
-            remainingBalance -= monthlyAmortization;
-        }
-
-        loanSimulation.put("Total Loan Cost", totalLoanCost);
-
-        return loanSimulation;
-    }
-    @Override
-    public Map<String, Float> simulateLoanInFineByYear(@NotNull Loan loan) {
-        Map<String, Float> loanSimulation = new LinkedHashMap<>();
-        float annualInterestRate = loan.getInterestRate();
-        float interestForYear = annualInterestRate * loan.getAmmountRequest();
-        float totalInterest = interestForYear * loan.getDuration();
-        loanSimulation.put( "  Yearly Interest", interestForYear);
-        loanSimulation.put("Total Loan", totalInterest);
-        return loanSimulation;
+    public double calculatePayment(float amount, float interestRate, int totalPeriods) {
+        return (amount * interestRate) / (1 - Math.pow(1 + interestRate, -totalPeriods));
     }
 
-    @Override
-    public Map<String, Float> simulateLoanInFineByMonth(@NotNull Loan loan) {
-        Map<String, Float> loanSimulation = new LinkedHashMap<>();
-        float monthlyInterestRate = loan.getInterestRate() / 12;
-        float monthlyInterest = monthlyInterestRate * loan.getAmmountRequest();
-        float totalInterest = monthlyInterest * loan.getDuration() * 12;
-        loanSimulation.put( "  Monthly Interest", monthlyInterest);
-        loanSimulation.put("Total LoanCost", totalInterest);
-        return loanSimulation;
-    }
 
 @Override
-//generation de pdf
-public void generatePdf(@NotNull LinkedHashMap<String, Float> loanSimulation) throws IOException {
-    PDDocument document = new PDDocument();
-    PDPage page = new PDPage();
-    document.addPage(page);
-    PDPageContentStream contentStream = new PDPageContentStream(document, page);
-    contentStream.setFont(PDType1Font.HELVETICA, 12);
+    public String createLoanSimulationPdf(Loan loan) throws DocumentException, FileNotFoundException {
+        Document document = new Document();
+        String filePath = "D:\\PIDEV PROJECT\\loan_simulation." + loan.getIdLoan() + ".pdf";
+        PdfWriter.getInstance(document, new FileOutputStream(filePath));
 
-    float y = page.getMediaBox().getHeight() - 20; // Position verticale initiale
-    float x = 50; // Position horizontale initiale
-    float columnWidth = 150; // Largeur des colonnes
+        document.open();
+        // Title
+        Font titleFont = new Font(Font.FontFamily.HELVETICA, 18, Font.BOLD);
+        Paragraph title = new Paragraph("LOAN CONTRACT", titleFont);
+        title.setAlignment(Element.ALIGN_CENTER);
+        document.add(title);
 
-    contentStream.beginText();
-    contentStream.newLineAtOffset(x, y);
+        // Loan Information
+        document.add(new Paragraph(" "));
+        Font infoFont = new Font(Font.FontFamily.HELVETICA, 12);
+        document.add(new Paragraph("LOAN ID: " + loan.getIdLoan(), infoFont));
+        document.add(new Paragraph("START DATE: " + formatDate(loan.getStartDate()), infoFont));
+        LocalDate endDate = loan.getStartDate().plusMonths(loan.getDuration() * 12); // Assuming duration is in years
+        document.add(new Paragraph("DATE OF CLOSURE: " + formatDate(endDate), infoFont));
+        // Add other necessary loan information here
 
-    int currentYear = 0; // Indice du year actuel
-    for (Map.Entry<String, Float> entry : loanSimulation.entrySet()) {
-        String key = entry.getKey();
-        String value = String.format("%.2f", entry.getValue());
-        if (key.startsWith("Year")) {
-            int yearIndex = Integer.parseInt(key.substring(5, key.indexOf(" -"))); // Extraire l'indice du year
-            if (yearIndex != currentYear) { // Nouvelle ligne pour chaque changement d'indice de year
-                currentYear = yearIndex;
-                contentStream.newLineAtOffset(-x, -15); // Déplacer vers la gauche pour commencer une nouvelle ligne
-            }
+        document.add(new Paragraph(" "));
+
+        List<String[]> simulationResults = simulateLoan(loan);
+        PdfPTable table = new PdfPTable(5); // 5 columns
+
+        // Add header row
+        for (String header : simulationResults.get(0)) {
+            table.addCell(new Phrase(header, new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD)));
         }
-        contentStream.showText(key + " : " + value);
-        contentStream.newLineAtOffset(columnWidth, 0); // Déplacement horizontal pour la prochaine colonne
+
+        // Add data rows
+        simulationResults.stream().skip(1).forEach(row -> {
+            for (String cell : row) {
+                table.addCell(new Phrase(cell, new Font(Font.FontFamily.HELVETICA, 12)));
+            }
+        });
+
+        document.add(table);
+        document.close();
+
+        return filePath;
     }
-    contentStream.endText();
 
-    contentStream.close();
-    document.save("D:\\PIDEV PROJECT\\loan_simulation.pdf");
-    document.close();
+    private String formatDate(LocalDate date) {
+        return date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+    }
+@Override
+    public String approveLoanById(Long loanId) throws DocumentException, FileNotFoundException {
+        Optional<Loan> loanOpt = loanRepository.findById(loanId);
+
+        if (!loanOpt.isPresent()) {
+            return "Loan with ID " + loanId + " does not exist.";
+        }
+
+        Loan loan = loanOpt.orElse(null);
+        if (loan.getLoanStatus()!= LoanStatus.Pending) {
+            return "Loan is not in PENDING status.";
+        }
+
+        simulateLoan(loan);
+
+        // Mettre à jour le statut du prêt à APPROVED après la simulation réussie
+        loan.setLoanStatus(LoanStatus.Approved);
+        loanRepository.save(loan);
+
+        // Générer le contrat de prêt après l'approbation
+        String contractPath = createLoanSimulationPdf(loan);
+
+        // Vous pouvez stocker le chemin du contrat dans le prêt ou effectuer d'autres actions nécessaires
+
+        return "Loan with ID " + loanId + " has been approved and contract generated at: " + contractPath;
+    }
+
+
+
+
 }
 
 
 
-}
+
+
