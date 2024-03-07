@@ -6,6 +6,7 @@ import esprit.tn.flexifin.entities.LoanStatus;
 import esprit.tn.flexifin.entities.LoanType;
 import esprit.tn.flexifin.serviceInterfaces.ILoanService;
 import lombok.AllArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.FileNotFoundException;
@@ -95,4 +96,12 @@ public class LoanRestController {
     public String approveLoanById(@PathVariable("idL") Long loanId) throws DocumentException, FileNotFoundException {
         return iLoanService.approveLoanById(loanId);
     }
+
+    // Endpoint temporaire pour tester la mise à jour des dates d'échéance
+    @GetMapping("/triggerUpdatePaymentDueDates")
+    public ResponseEntity<String> triggerUpdatePaymentDueDates() {
+        iLoanService.updatePaymentDueDates();
+        return ResponseEntity.ok("Payment due dates update triggered.");
+    }
+
 }

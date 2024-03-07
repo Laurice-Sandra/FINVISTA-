@@ -9,7 +9,10 @@ import esprit.tn.flexifin.repositories.LoanRepository;
 import esprit.tn.flexifin.repositories.ProfileRepository;
 import esprit.tn.flexifin.serviceInterfaces.ILoanService;
 import esprit.tn.flexifin.serviceInterfaces.IProfileService;
+import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.io.FileNotFoundException;
@@ -21,6 +24,7 @@ import java.util.List;
 
 @Service
 @AllArgsConstructor
+@EnableScheduling
 public class LoanServiceImp implements ILoanService {
     LoanRepository loanRepository;
     AccountRepository accountRepository;
@@ -57,7 +61,10 @@ public Loan addLoanAssignAccount(Loan loan, Long idAccount) {
     }
 
     Account account = accountOpt.orElse(null);
-    loan.setInterestRate(getInterestRate()); // Assurez-vous que cette méthode existe et retourne un taux valide
+    loan.setInterestRate(getInterestRate());
+    loan.setRemainingBalance(loan.getAmmountRequest());
+    loan.setNextPaymentDueDate(calculateFirstDueDate(loan.getStartDate(), loan.getRepaymentMethod()));
+    // Assurez-vous que cette méthode existe et retourne un taux valide
     loan.setAccount(account);
 
     // Continuez seulement si le compte a un profil associé
@@ -122,7 +129,7 @@ return loanRepository.findByLoanStatus(status);
 
 
 
-
+@Override
     public double calculateLoanCapacity(double monthlyIncome, double monthlyDebtPayments, double monthlyExpenses) {
         return monthlyIncome - (monthlyDebtPayments + monthlyExpenses);
     }
@@ -247,7 +254,34 @@ return loanRepository.findByLoanStatus(status);
         return "Loan with ID " + loanId + " has been approved and contract generated at: " + contractPath;
     }
 
+    private LocalDate calculateFirstDueDate(LocalDate startDate, RepaymentMethod repaymentMethod) {
+        return repaymentMethod == RepaymentMethod.MENSUALITY ? startDate.plusMonths(1) : startDate.plusYears(1);
+    }
 
+    @Scheduled(cron = "0 1 3 * * ?") // Exécute cette méthode tous les jours à 13:00
+    @Transactional
+    @Override
+    public void updatePaymentDueDates() {
+        List<Loan> loans = loanRepository.findByLoanStatus(LoanStatus.InProgress); // Trouvez tous les prêts en cours
+        LocalDate today = LocalDate.now();
+        for (Loan loan : loans) {
+            // Calculez directement la date de fin en fonction de la méthode de remboursement
+            LocalDate loanEndDate = loan.getRepaymentMethod() == RepaymentMethod.MENSUALITY
+                    ? loan.getStartDate().plusMonths(loan.getDuration())
+                    : loan.getStartDate().plusYears(loan.getDuration());
+
+            if (loan.getNextPaymentDueDate() != null && !loan.getNextPaymentDueDate().isAfter(today)
+                    && loan.getRemainingBalance() > 0 && loan.getNextPaymentDueDate().isBefore(loanEndDate)) {
+
+                // Mise à jour de la date d'échéance pour le prochain paiement
+                loan.setNextPaymentDueDate(loan.getRepaymentMethod() == RepaymentMethod.MENSUALITY
+                        ? loan.getNextPaymentDueDate().plusMonths(1)
+                        : loan.getNextPaymentDueDate().plusYears(1));
+
+                loanRepository.save(loan);
+            }
+        }
+    }
 
 
 }

@@ -46,5 +46,6 @@ public interface ILoanService {
     double calculatePayment(float amount, float interestRate, int totalPeriods);
 
     String approveLoanById(Long loanId) throws DocumentException, FileNotFoundException;
+    void updatePaymentDueDates();
 
 }

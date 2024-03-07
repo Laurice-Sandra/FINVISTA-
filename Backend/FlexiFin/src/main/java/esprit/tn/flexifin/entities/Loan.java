@@ -28,12 +28,11 @@ public class Loan implements Serializable {
      float loanCost;
     @Enumerated(EnumType.STRING)
     RepaymentMethod repaymentMethod;
-
-    //private float interestRate;
-
     String loanReason;
     @Enumerated(EnumType.STRING)
     LoanStatus loanStatus;
+    private float remainingBalance; // Solde restant à rembourser
+    private LocalDate nextPaymentDueDate;
     @ManyToOne
     @JsonIgnore
     private Account account;
