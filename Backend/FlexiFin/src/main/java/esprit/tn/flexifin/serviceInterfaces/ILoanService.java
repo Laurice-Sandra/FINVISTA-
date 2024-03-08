@@ -1,17 +1,14 @@
 package esprit.tn.flexifin.serviceInterfaces;
-
 import com.itextpdf.text.DocumentException;
 import esprit.tn.flexifin.entities.Loan;
 import esprit.tn.flexifin.entities.LoanStatus;
 import esprit.tn.flexifin.entities.LoanType;
-import org.jetbrains.annotations.NotNull;
+import jakarta.mail.MessagingException;
 
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.time.LocalDate;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+
 
 public interface ILoanService {
     List<Loan> retrieveAllLoans();
@@ -47,5 +44,6 @@ public interface ILoanService {
 
     String approveLoanById(Long loanId) throws DocumentException, FileNotFoundException;
     void updatePaymentDueDates();
+    void confirmLoan(Long idLoan);
 
 }

@@ -30,6 +30,7 @@ public class LoanServiceImp implements ILoanService {
     AccountRepository accountRepository;
     IProfileService iProfileService;
     ProfileRepository profileRepository;
+
     private static float tmm = 0.08f; // Valeur initiale du TMM, peut être configurée
     private static final float FIXED_PART = 0.12F; // Partie fixe
 
@@ -231,6 +232,7 @@ return loanRepository.findByLoanStatus(status);
     public String approveLoanById(Long loanId) throws DocumentException, FileNotFoundException {
         Optional<Loan> loanOpt = loanRepository.findById(loanId);
 
+
         if (!loanOpt.isPresent()) {
             return "Loan with ID " + loanId + " does not exist.";
         }
@@ -253,6 +255,8 @@ return loanRepository.findByLoanStatus(status);
 
         return "Loan with ID " + loanId + " has been approved and contract generated at: " + contractPath;
     }
+
+
 
     private LocalDate calculateFirstDueDate(LocalDate startDate, RepaymentMethod repaymentMethod) {
         return repaymentMethod == RepaymentMethod.MENSUALITY ? startDate.plusMonths(1) : startDate.plusYears(1);
@@ -280,6 +284,14 @@ return loanRepository.findByLoanStatus(status);
 
                 loanRepository.save(loan);
             }
+        }
+    }
+@Override
+    public void confirmLoan(Long idLoan) {
+        Loan loan = loanRepository.findById(idLoan).orElse(null);
+        if (loan != null && loan.getLoanStatus() == LoanStatus.Approved) {
+            loan.setLoanStatus(LoanStatus.InProgress);
+            loanRepository.save(loan);
         }
     }
 

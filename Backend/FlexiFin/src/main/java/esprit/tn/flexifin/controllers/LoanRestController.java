@@ -5,7 +5,9 @@ import esprit.tn.flexifin.entities.Loan;
 import esprit.tn.flexifin.entities.LoanStatus;
 import esprit.tn.flexifin.entities.LoanType;
 import esprit.tn.flexifin.serviceInterfaces.ILoanService;
+import jakarta.mail.MessagingException;
 import lombok.AllArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -103,5 +105,11 @@ public class LoanRestController {
         iLoanService.updatePaymentDueDates();
         return ResponseEntity.ok("Payment due dates update triggered.");
     }
+    @GetMapping("/confirm-loan/{loanId}")
+    public ResponseEntity<String> confirmLoan(@PathVariable("loanId") Long loanId) {
+        iLoanService.confirmLoan(loanId);
+        return ResponseEntity.ok("Prêt confirmé avec succès.");
+    }
+
 
 }

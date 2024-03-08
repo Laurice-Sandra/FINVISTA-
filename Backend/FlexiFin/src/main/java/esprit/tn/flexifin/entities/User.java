@@ -24,6 +24,7 @@ public class User implements Serializable {
     private String lastName;
 
     private String adress;
+    private String email;
 
     private String phoneNum;
     @JsonIgnore
