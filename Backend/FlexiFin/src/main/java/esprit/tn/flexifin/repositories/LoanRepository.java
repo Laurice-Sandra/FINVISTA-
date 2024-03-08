@@ -2,7 +2,6 @@ package esprit.tn.flexifin.repositories;
 
 import esprit.tn.flexifin.entities.Loan;
 import esprit.tn.flexifin.entities.LoanStatus;
-import esprit.tn.flexifin.entities.LoanType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -21,7 +20,7 @@ public interface LoanRepository extends JpaRepository<Loan, Long> {
     List<Loan> findByStartDate(LocalDate startDate);
 
     // Filtrer les prêts par type de prêt
-    List<Loan> findByLoantype(LoanType loantype);
+    //List<Loan> findByLoantype(LoanType loantype);
 
     @Query("SELECT l FROM Loan l JOIN l.account c JOIN c.profile p JOIN p.user u WHERE u.idUser = :userId")
     List<Loan> findByUserId(@Param("userId") Long userId);

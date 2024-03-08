@@ -1,2 +1,4 @@
-package esprit.tn.flexifin.entities;public enum SinisterStatus {
+package esprit.tn.flexifin.entities;
+
+public enum SinisterStatus {
 }

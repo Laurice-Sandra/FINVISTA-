@@ -19,11 +19,11 @@ public class AccountRestController {
     public Account addAccount(@RequestBody Account account) {
         return iAccountService.addAccount(account);
     }
-
+    @PutMapping("/updateAccount")
     public Account updateAccount(Account account) {
         return iAccountService.updateAccount(account);
     }
-
+    @GetMapping("/getAccount/{idAccount}")
     public Account retrieveAccount(Long idAccount) {
         return iAccountService.retrieveAccount(idAccount);
     }

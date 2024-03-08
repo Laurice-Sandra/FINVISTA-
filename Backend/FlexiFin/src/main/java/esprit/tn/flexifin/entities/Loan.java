@@ -17,26 +17,28 @@ import java.time.LocalDate;
 public class Loan implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-     Long idLoan;
+     Long idloan;
      float ammountRequest;
      LocalDate startDate;
      Integer duration;
-    @Enumerated(EnumType.STRING)
-     LoanType loantype;
-    float interestRate;
-     float monthlyPayment;
-     float loanCost;
-    @Enumerated(EnumType.STRING)
-    RepaymentMethod repaymentMethod;
+//    @Enumerated(EnumType.STRING)
+//     LoanType loantype;
+//    float interestRate;
+//     float monthlyPayment;
+//     float loanCost;
+//    @Enumerated(EnumType.STRING)
+//    RepaymentMethod repaymentMethod;
 
     //private float interestRate;
 
-    String loanReason;
+    //String loanReason;
     @Enumerated(EnumType.STRING)
     LoanStatus loanStatus;
     @ManyToOne
     @JsonIgnore
     private Account account;
 
+    @OneToOne
+    private InsuranceContrat insuranceContrat;
 
 }
