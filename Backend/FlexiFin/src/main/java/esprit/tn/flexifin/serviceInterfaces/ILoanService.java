@@ -1,7 +1,6 @@
 package esprit.tn.flexifin.serviceInterfaces;
 
 import esprit.tn.flexifin.entities.Loan;
-import esprit.tn.flexifin.entities.LoanStatus;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -17,7 +16,6 @@ public interface ILoanService {
 
     void removeLoan(Long idLoan);
 
-    List<Loan> getLoanByStatus(LoanStatus status);
 
     List<Loan> getLoanByStartDate(LocalDate date);
 

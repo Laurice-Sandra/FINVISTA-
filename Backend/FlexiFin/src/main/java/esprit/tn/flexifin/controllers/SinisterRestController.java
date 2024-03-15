@@ -11,7 +11,7 @@ import java.util.List;
 @AllArgsConstructor
 @RequestMapping("/sinister")
 public class SinisterRestController {
-    ISinisterService iSinisterService;
+   private ISinisterService iSinisterService;
     @GetMapping("/GetAllSinister")
     public List<Sinister> retrieveAllProfiles() {
         return iSinisterService.retrieveAllSinisters();

@@ -14,6 +14,7 @@ import java.util.Date;
 @AllArgsConstructor
 @Getter
 @Setter
+@Table(name = "sinister")
 public class Sinister implements Serializable {
     @Id
     @GeneratedValue( strategy = GenerationType.IDENTITY)

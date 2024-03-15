@@ -1,7 +1,6 @@
 package esprit.tn.flexifin.serviceImp;
 
 import esprit.tn.flexifin.entities.Loan;
-import esprit.tn.flexifin.entities.LoanStatus;
 import esprit.tn.flexifin.repositories.LoanRepository;
 import esprit.tn.flexifin.serviceInterfaces.ILoanService;
 
@@ -46,11 +45,6 @@ public class LoanServiceImp implements ILoanService {
 
     }
 
-
-    @Override
-    public List<Loan> getLoanByStatus(LoanStatus status) {
-        return null;
-    }
 
     @Override
     public List<Loan> getLoanByStartDate(LocalDate date) {

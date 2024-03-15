@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 import java.util.Date;
 
 @Entity
@@ -14,6 +15,7 @@ import java.util.Date;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@Table(name = "insurance_contrat")
 public class InsuranceContrat implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,8 +23,9 @@ public class InsuranceContrat implements Serializable {
     private float prime;
     private Date startDate;
     private Date EndDate;
-    private Date dateEffet ;
-    private LoanStatus loanStatus;
+    //private Long matricule;
+    @Temporal(TemporalType.DATE)
+    private LocalDate dateEffet ;
     @Enumerated(EnumType.STRING)
     private TypeContrat type;
 

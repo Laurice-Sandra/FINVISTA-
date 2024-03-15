@@ -1,7 +1,6 @@
 package esprit.tn.flexifin.controllers;
 
 import esprit.tn.flexifin.entities.Loan;
-import esprit.tn.flexifin.entities.LoanStatus;
 import esprit.tn.flexifin.serviceInterfaces.ILoanService;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -41,18 +40,6 @@ public class LoanRestController {
         return this.iLoanService.updateLoan(loan);
     }
 
-    //FILTERS
-    @GetMapping("/getLoanbystatus/{status}")
-    public List<Loan> getLoanByStatus(@PathVariable("status") LoanStatus status) {
-        return iLoanService.getLoanByStatus(status);
-    }
-    @GetMapping("/getLoanbyStartDate/{date}")
-    public List<Loan> getLoanByStartDate(@PathVariable("date") LocalDate date) {
-        return iLoanService.getLoanByStartDate(date);
-    }
-    @GetMapping("/getLoanbyUser/{iduser}")
-    public List<Loan> getLoansByUserId(@PathVariable("iduser") Long idUser) {
-        return iLoanService.getLoanByUserId(idUser);
-    }
+
 
 }

@@ -14,6 +14,7 @@ import java.time.LocalDate;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @AllArgsConstructor
 @NoArgsConstructor
+@Table(name = "loan")
 public class Loan implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -32,8 +33,7 @@ public class Loan implements Serializable {
     //private float interestRate;
 
     //String loanReason;
-    @Enumerated(EnumType.STRING)
-    LoanStatus loanStatus;
+
     @ManyToOne
     @JsonIgnore
     private Account account;

@@ -5,16 +5,19 @@ import esprit.tn.flexifin.entities.Insurance;
 import esprit.tn.flexifin.entities.InsuranceContrat;
 import esprit.tn.flexifin.entities.TypeContrat;
 
+import java.util.List;
 import java.util.Set;
 
 public interface IBeneficiaryService {
     Beneficiary addBeneficiary(Beneficiary bf);
 
-    InsuranceContrat addInsuranceContrat (InsuranceContrat c) ;
+    List<Beneficiary> retrieveAllBeneficiary();
 
-    Insurance addInsurance (Insurance a, int cinBf, String matricule);
+    InsuranceContrat addInsuranceContrat (InsuranceContrat c);
 
-    InsuranceContrat getContratBf(int idBf);
+    Insurance addInsurance(Insurance a, int cinBf, Long idContrat);
+
+    InsuranceContrat getContratBf(Long idBf);
 
     float getMontantBf(int cinBf);
 

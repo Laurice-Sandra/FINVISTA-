@@ -1,7 +1,6 @@
 package esprit.tn.flexifin.repositories;
 
 import esprit.tn.flexifin.entities.Loan;
-import esprit.tn.flexifin.entities.LoanStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,8 +12,7 @@ import java.util.List;
 @Repository
 public interface LoanRepository extends JpaRepository<Loan, Long> {
 
-    // Filtrer les prêts par statut
-    List<Loan> findByLoanStatus(LoanStatus loanStatus);
+
 
     // Filtrer les prêts par date
     List<Loan> findByStartDate(LocalDate startDate);

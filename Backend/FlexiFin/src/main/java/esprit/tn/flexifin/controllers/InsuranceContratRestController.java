@@ -11,7 +11,7 @@ import java.util.List;
 @AllArgsConstructor
 @RequestMapping("/insurance")
 public class InsuranceContratRestController {
-     IInsuranceContratService iInsuranceContratService;
+    private IInsuranceContratService iInsuranceContratService;
 
         @GetMapping("/GetAllInsuranceContrat")
         public List<InsuranceContrat> retrieveAllInsuranceContrats() {
