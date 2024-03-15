@@ -9,8 +9,14 @@ import esprit.tn.flexifin.repositories.LoanRepository;
 import esprit.tn.flexifin.repositories.ProfileRepository;
 import esprit.tn.flexifin.serviceInterfaces.ILoanService;
 import esprit.tn.flexifin.serviceInterfaces.IProfileService;
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -33,6 +39,68 @@ public class LoanServiceImp implements ILoanService {
 
     private static float tmm = 0.08f; // Valeur initiale du TMM, peut être configurée
     private static final float FIXED_PART = 0.12F; // Partie fixe
+
+
+    private final JavaMailSender emailSender;
+
+
+
+
+
+    public void sendEmailWithAttachment(String to, String subject, String body, String attachmentPath) throws MessagingException {
+        if (attachmentPath == null) {
+            throw new IllegalArgumentException("Attachment path cannot be null");
+        }
+
+        MimeMessage mimeMessage = emailSender.createMimeMessage();
+        MimeMessageHelper messageHelper = new MimeMessageHelper(mimeMessage, true);
+
+        messageHelper.setFrom("noreply@finvistaflexifin.com");
+        messageHelper.setTo(to);
+        messageHelper.setSubject(subject);
+        messageHelper.setText(body);
+
+        FileSystemResource file = new FileSystemResource(attachmentPath);
+        messageHelper.addAttachment(file.getFilename(), file);
+
+        emailSender.send(mimeMessage);
+    }
+
+
+    @Override
+    public String approveLoanById(Long loanId) throws DocumentException, FileNotFoundException, MessagingException {
+        Optional<Loan> loanOpt = loanRepository.findById(loanId);
+
+        if (!loanOpt.isPresent()) {
+            return "Loan with ID " + loanId + " does not exist.";
+        }
+
+        Loan loan = loanOpt.orElse(null); // Utilisation de get() directement ici est sûr car on a déjà vérifié isPresent()
+        if (loan.getLoanStatus() != LoanStatus.Pending) {
+            return "Loan is not in PENDING status.";
+        }
+
+        if (loan.getAccount() == null || loan.getAccount().getProfile() == null || loan.getAccount().getProfile().getUser() == null) {
+            return "Account/Profile/User information is missing for loan ID " + loanId;
+        }
+
+        simulateLoan(loan);
+
+        loan.setLoanStatus(LoanStatus.Approved);
+        loanRepository.save(loan);
+
+        String contractPath = createLoanSimulationPdf(loan);
+        String emailBody = "Votre prêt a été approuvé. Veuillez trouver ci-joint le contrat.";
+        String to = loan.getAccount().getProfile().getUser().getEmail();
+        sendEmailWithAttachment(to, "Confirmation de prêt", emailBody, contractPath);
+
+        return "Loan with ID " + loanId + " has been approved. Contract sent to: " + to;
+    }
+
+
+
+
+
 
     @Override
     public void updateTmm(float newTmm) {
@@ -229,7 +297,7 @@ return loanRepository.findByLoanStatus(status);
         return date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
     }
 @Override
-    public String approveLoanById(Long loanId) throws DocumentException, FileNotFoundException {
+    public String approveLoan(Long loanId) throws DocumentException, FileNotFoundException {
         Optional<Loan> loanOpt = loanRepository.findById(loanId);
 
 

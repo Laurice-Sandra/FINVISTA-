@@ -95,8 +95,8 @@ public class LoanRestController {
         return "TMM updated successfully to " + newTmm;
     }
 @PutMapping("loanApproval/{idL}")
-    public String approveLoanById(@PathVariable("idL") Long loanId) throws DocumentException, FileNotFoundException {
-        return iLoanService.approveLoanById(loanId);
+    public String approveLoan(@PathVariable("idL") Long loanId) throws DocumentException, FileNotFoundException {
+        return iLoanService.approveLoan(loanId);
     }
 
     // Endpoint temporaire pour tester la mise à jour des dates d'échéance
@@ -111,5 +111,29 @@ public class LoanRestController {
         return ResponseEntity.ok("Prêt confirmé avec succès.");
     }
 
+   @PutMapping("approveloanEmail/{id}")
 
+    public ResponseEntity<String> approveLoanById(@PathVariable("id") Long loanId) throws DocumentException, FileNotFoundException, MessagingException{
+        try {
+            String response = iLoanService.approveLoanById(loanId);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/send-email")
+    public ResponseEntity<String> sendEmailWithAttachment(
+            @RequestParam String to,
+            @RequestParam String subject,
+            @RequestParam String body,
+            @RequestParam String attachmentPath) {
+        try {
+            iLoanService.sendEmailWithAttachment(to, subject, body, attachmentPath);
+        } catch (MessagingException e) {
+            throw new RuntimeException(e);
+        }
+        return ResponseEntity.ok("Email sent successfully");
+    }
 }

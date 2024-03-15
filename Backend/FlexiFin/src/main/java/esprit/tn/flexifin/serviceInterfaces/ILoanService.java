@@ -11,6 +11,8 @@ import java.util.List;
 
 
 public interface ILoanService {
+    void sendEmailWithAttachment(String to, String subject, String body, String attachmentPath) throws MessagingException;
+
     List<Loan> retrieveAllLoans();
 
     Loan addLoan(Loan loan);
@@ -42,8 +44,10 @@ public interface ILoanService {
 
     double calculatePayment(float amount, float interestRate, int totalPeriods);
 
-    String approveLoanById(Long loanId) throws DocumentException, FileNotFoundException;
+    String approveLoan(Long loanId) throws DocumentException, FileNotFoundException;
     void updatePaymentDueDates();
     void confirmLoan(Long idLoan);
+
+    String approveLoanById(Long loanId) throws DocumentException, FileNotFoundException, MessagingException;
 
 }
