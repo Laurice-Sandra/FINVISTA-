@@ -9,6 +9,8 @@ import esprit.tn.flexifin.repositories.LoanRepository;
 import esprit.tn.flexifin.repositories.ProfileRepository;
 import esprit.tn.flexifin.serviceInterfaces.ILoanService;
 import esprit.tn.flexifin.serviceInterfaces.IProfileService;
+import freemarker.template.Template;
+import freemarker.template.TemplateException;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.transaction.Transactional;
@@ -20,9 +22,12 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.ui.freemarker.FreeMarkerTemplateUtils;
+import org.springframework.web.servlet.view.freemarker.FreeMarkerConfigurer;
 
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -40,62 +45,12 @@ public class LoanServiceImp implements ILoanService {
     private static float tmm = 0.08f; // Valeur initiale du TMM, peut être configurée
     private static final float FIXED_PART = 0.12F; // Partie fixe
 
-
     private final JavaMailSender emailSender;
+    private FreeMarkerConfigurer freemarkerConfigurer;
 
 
 
 
-
-    public void sendEmailWithAttachment(String to, String subject, String body, String attachmentPath) throws MessagingException {
-        if (attachmentPath == null) {
-            throw new IllegalArgumentException("Attachment path cannot be null");
-        }
-
-        MimeMessage mimeMessage = emailSender.createMimeMessage();
-        MimeMessageHelper messageHelper = new MimeMessageHelper(mimeMessage, true);
-
-        messageHelper.setFrom("noreply@finvistaflexifin.com");
-        messageHelper.setTo(to);
-        messageHelper.setSubject(subject);
-        messageHelper.setText(body);
-
-        FileSystemResource file = new FileSystemResource(attachmentPath);
-        messageHelper.addAttachment(file.getFilename(), file);
-
-        emailSender.send(mimeMessage);
-    }
-
-
-    @Override
-    public String approveLoanById(Long loanId) throws DocumentException, FileNotFoundException, MessagingException {
-        Optional<Loan> loanOpt = loanRepository.findById(loanId);
-
-        if (!loanOpt.isPresent()) {
-            return "Loan with ID " + loanId + " does not exist.";
-        }
-
-        Loan loan = loanOpt.orElse(null); // Utilisation de get() directement ici est sûr car on a déjà vérifié isPresent()
-        if (loan.getLoanStatus() != LoanStatus.Pending) {
-            return "Loan is not in PENDING status.";
-        }
-
-        if (loan.getAccount() == null || loan.getAccount().getProfile() == null || loan.getAccount().getProfile().getUser() == null) {
-            return "Account/Profile/User information is missing for loan ID " + loanId;
-        }
-
-        simulateLoan(loan);
-
-        loan.setLoanStatus(LoanStatus.Approved);
-        loanRepository.save(loan);
-
-        String contractPath = createLoanSimulationPdf(loan);
-        String emailBody = "Votre prêt a été approuvé. Veuillez trouver ci-joint le contrat.";
-        String to = loan.getAccount().getProfile().getUser().getEmail();
-        sendEmailWithAttachment(to, "Confirmation de prêt", emailBody, contractPath);
-
-        return "Loan with ID " + loanId + " has been approved. Contract sent to: " + to;
-    }
 
 
 
@@ -361,6 +316,76 @@ return loanRepository.findByLoanStatus(status);
             loan.setLoanStatus(LoanStatus.InProgress);
             loanRepository.save(loan);
         }
+    }
+
+    //EMAIL SENDING WITH FREEMARKER
+
+
+
+
+    public void sendEmailWithFreemarkerTemplate(String to, String subject, Map<String, Object> templateModel, String attachmentPath) throws MessagingException, IOException, TemplateException {
+        MimeMessage mimeMessage = emailSender.createMimeMessage();
+        MimeMessageHelper messageHelper = new MimeMessageHelper(mimeMessage, true);
+        messageHelper.setFrom("noreply@finvistaflexifin.com");
+        messageHelper.setTo(to);
+        messageHelper.setSubject(subject);
+
+        // Configuration de FreeMarker
+        Template freemarkerTemplate = freemarkerConfigurer.getConfiguration().getTemplate("email-template.ftl");
+        String htmlBody = FreeMarkerTemplateUtils.processTemplateIntoString(freemarkerTemplate, templateModel);
+        messageHelper.setText(htmlBody, true);
+
+        // Ajout de la pièce jointe si nécessaire
+        if (attachmentPath != null && !attachmentPath.isEmpty()) {
+            FileSystemResource file = new FileSystemResource(attachmentPath);
+            messageHelper.addAttachment(file.getFilename(), file);
+        }
+
+        emailSender.send(mimeMessage);
+    }
+
+
+
+
+    @Override
+    public String approveLoanByIdWithFreemarker(Long loanId) throws DocumentException, MessagingException, IOException, TemplateException {
+        Optional<Loan> loanOpt = loanRepository.findById(loanId);
+
+        if (!loanOpt.isPresent()) {
+            return "Loan with ID " + loanId + " does not exist.";
+        }
+
+        Loan loan = loanOpt.get();
+        if (loan.getLoanStatus() != LoanStatus.Pending) {
+            return "Loan is not in PENDING status.";
+        }
+
+        if (loan.getAccount() == null || loan.getAccount().getProfile() == null || loan.getAccount().getProfile().getUser() == null) {
+            return "Account/Profile/User information is missing for loan ID " + loanId;
+        }
+
+        simulateLoan(loan);
+
+        loan.setLoanStatus(LoanStatus.Approved);
+        loanRepository.save(loan);
+
+        // Chemin vers le contrat de prêt généré
+        String contractPath = createLoanSimulationPdf(loan);
+
+        // Préparation du modèle pour FreeMarker
+        Map<String, Object> templateModel = new HashMap<>();
+        templateModel.put("loan", loan);
+        User user = loan.getAccount().getProfile().getUser();
+        templateModel.put("user", user);
+        templateModel.put("name", user.getFirstName()); // Ensure this matches your User entity's method to get the name
+        templateModel.put("confirmationUrl", "http://yourconfirmationlink.com"); // Adjust this to your actual confirmation link
+        templateModel.put("contractPath", contractPath);
+
+        // Appel du service d'envoi d'email modifié pour utiliser FreeMarker
+        String to = user.getEmail();
+        sendEmailWithFreemarkerTemplate(to, "Confirmation de prêt", templateModel, contractPath);
+
+        return "Loan with ID " + loanId + " has been approved. Contract sent to: " + to;
     }
 
 

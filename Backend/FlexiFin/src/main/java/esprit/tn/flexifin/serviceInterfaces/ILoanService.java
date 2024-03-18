@@ -3,15 +3,17 @@ import com.itextpdf.text.DocumentException;
 import esprit.tn.flexifin.entities.Loan;
 import esprit.tn.flexifin.entities.LoanStatus;
 import esprit.tn.flexifin.entities.LoanType;
+import freemarker.template.TemplateException;
 import jakarta.mail.MessagingException;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 
 
 public interface ILoanService {
-    void sendEmailWithAttachment(String to, String subject, String body, String attachmentPath) throws MessagingException;
+    //void sendEmailWithAttachment(String to, String subject, String body, String attachmentPath) throws MessagingException;
 
     List<Loan> retrieveAllLoans();
 
@@ -48,6 +50,8 @@ public interface ILoanService {
     void updatePaymentDueDates();
     void confirmLoan(Long idLoan);
 
-    String approveLoanById(Long loanId) throws DocumentException, FileNotFoundException, MessagingException;
+    //String approveLoanById(Long loanId) throws DocumentException, FileNotFoundException, MessagingException;
+
+    public String approveLoanByIdWithFreemarker(Long loanId) throws DocumentException, MessagingException, IOException, TemplateException;
 
 }

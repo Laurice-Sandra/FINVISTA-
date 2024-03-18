@@ -5,6 +5,7 @@ import esprit.tn.flexifin.entities.Loan;
 import esprit.tn.flexifin.entities.LoanStatus;
 import esprit.tn.flexifin.entities.LoanType;
 import esprit.tn.flexifin.serviceInterfaces.ILoanService;
+import freemarker.template.TemplateException;
 import jakarta.mail.MessagingException;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -12,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -111,29 +113,9 @@ public class LoanRestController {
         return ResponseEntity.ok("Prêt confirmé avec succès.");
     }
 
-   @PutMapping("approveloanEmail/{id}")
 
-    public ResponseEntity<String> approveLoanById(@PathVariable("id") Long loanId) throws DocumentException, FileNotFoundException, MessagingException{
-        try {
-            String response = iLoanService.approveLoanById(loanId);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred: " + e.getMessage());
-        }
-    }
-
-    @PostMapping("/send-email")
-    public ResponseEntity<String> sendEmailWithAttachment(
-            @RequestParam String to,
-            @RequestParam String subject,
-            @RequestParam String body,
-            @RequestParam String attachmentPath) {
-        try {
-            iLoanService.sendEmailWithAttachment(to, subject, body, attachmentPath);
-        } catch (MessagingException e) {
-            throw new RuntimeException(e);
-        }
-        return ResponseEntity.ok("Email sent successfully");
+    @PutMapping("approveloanEmailFM/{id}")
+    public String approveLoanByIdWithFreemarker(@PathVariable("id") Long loanId) throws DocumentException, MessagingException, IOException, TemplateException {
+        return iLoanService.approveLoanByIdWithFreemarker(loanId);
     }
 }
