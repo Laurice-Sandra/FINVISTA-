@@ -118,4 +118,9 @@ public class LoanRestController {
     public String approveLoanByIdWithFreemarker(@PathVariable("id") Long loanId) throws DocumentException, MessagingException, IOException, TemplateException {
         return iLoanService.approveLoanByIdWithFreemarker(loanId);
     }
+    @GetMapping("/pendingLoansUpdate")
+    public ResponseEntity<String> processPendingLoansUpdated() throws DocumentException, MessagingException, IOException, TemplateException {
+        iLoanService.processPendingLoansUpdated();
+        return ResponseEntity.ok("Pending loans updated with success");
+    }
 }

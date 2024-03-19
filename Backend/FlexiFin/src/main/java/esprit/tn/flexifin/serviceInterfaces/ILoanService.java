@@ -48,6 +48,8 @@ public interface ILoanService {
 
     String approveLoan(Long loanId) throws DocumentException, FileNotFoundException;
     void updatePaymentDueDates();
+
+    public void processPendingLoansUpdated() throws DocumentException, MessagingException, IOException, TemplateException;
     void confirmLoan(Long idLoan);
 
     //String approveLoanById(Long loanId) throws DocumentException, FileNotFoundException, MessagingException;

@@ -16,7 +16,6 @@ import jakarta.mail.internet.MimeMessage;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.springframework.core.io.FileSystemResource;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -47,6 +46,7 @@ public class LoanServiceImp implements ILoanService {
 
     private final JavaMailSender emailSender;
     private FreeMarkerConfigurer freemarkerConfigurer;
+
 
 
 
@@ -318,12 +318,13 @@ return loanRepository.findByLoanStatus(status);
         }
     }
 
+
+
     //EMAIL SENDING WITH FREEMARKER
 
 
 
-
-    public void sendEmailWithFreemarkerTemplate(String to, String subject, Map<String, Object> templateModel, String attachmentPath) throws MessagingException, IOException, TemplateException {
+    public void sendEmailWithFreemarkerTemplate(String to, String subject, Map<String, Object> templateModel, String attachmentPath, String templateName) throws MessagingException, IOException, TemplateException {
         MimeMessage mimeMessage = emailSender.createMimeMessage();
         MimeMessageHelper messageHelper = new MimeMessageHelper(mimeMessage, true);
         messageHelper.setFrom("noreply@finvistaflexifin.com");
@@ -331,7 +332,7 @@ return loanRepository.findByLoanStatus(status);
         messageHelper.setSubject(subject);
 
         // Configuration de FreeMarker
-        Template freemarkerTemplate = freemarkerConfigurer.getConfiguration().getTemplate("email-template.ftl");
+        Template freemarkerTemplate = freemarkerConfigurer.getConfiguration().getTemplate(templateName);
         String htmlBody = FreeMarkerTemplateUtils.processTemplateIntoString(freemarkerTemplate, templateModel);
         messageHelper.setText(htmlBody, true);
 
@@ -346,6 +347,7 @@ return loanRepository.findByLoanStatus(status);
 
 
 
+//LOAN APPROVAL
 
     @Override
     public String approveLoanByIdWithFreemarker(Long loanId) throws DocumentException, MessagingException, IOException, TemplateException {
@@ -355,7 +357,7 @@ return loanRepository.findByLoanStatus(status);
             return "Loan with ID " + loanId + " does not exist.";
         }
 
-        Loan loan = loanOpt.get();
+        Loan loan = loanOpt.orElse(null);
         if (loan.getLoanStatus() != LoanStatus.Pending) {
             return "Loan is not in PENDING status.";
         }
@@ -374,20 +376,113 @@ return loanRepository.findByLoanStatus(status);
 
         // Préparation du modèle pour FreeMarker
         Map<String, Object> templateModel = new HashMap<>();
-        templateModel.put("loan", loan);
         User user = loan.getAccount().getProfile().getUser();
-        templateModel.put("user", user);
         templateModel.put("name", user.getFirstName()); // Ensure this matches your User entity's method to get the name
         templateModel.put("confirmationUrl", "http://yourconfirmationlink.com"); // Adjust this to your actual confirmation link
         templateModel.put("contractPath", contractPath);
 
         // Appel du service d'envoi d'email modifié pour utiliser FreeMarker
         String to = user.getEmail();
-        sendEmailWithFreemarkerTemplate(to, "Confirmation de prêt", templateModel, contractPath);
+        String template ="email-template.ftl";
+        sendEmailWithFreemarkerTemplate(to, "Loan Application Update", templateModel, contractPath,template);
 
         return "Loan with ID " + loanId + " has been approved. Contract sent to: " + to;
     }
 
+
+//Verifying income
+public boolean isPaymentLessThanFortyPercentOfIncome(Loan loan) {
+    double monthlyPayment = calculatePayment(loan.getAmmountRequest(), loan.getInterestRate(), loan.getDuration() * 12);
+    double monthlyIncome = loan.getAccount().getProfile().getIncome();
+    return monthlyPayment < (0.4 * monthlyIncome);
+}
+
+
+    //loan rejection
+
+    private void rejectLoanAndNotifyUser(Loan loan, String reason) throws MessagingException, IOException, TemplateException {
+        loan.setLoanStatus(LoanStatus.Denied);
+        loanRepository.save(loan);
+        Map<String, Object> templateModel = new HashMap<>();
+        User user = loan.getAccount().getProfile().getUser();
+        templateModel.put("user", user);
+        templateModel.put("name", user.getFirstName());
+        templateModel.put("reason", reason);
+        String to = user.getEmail();
+
+        sendEmailWithFreemarkerTemplate(to, "Loan Application Update", templateModel, null, "loan-rejection.ftl");
+    }
+
+    //LOAN APPROVAL AND REJECTION
+    /**
+     * Scheduled task to process pending loans with updated conditions.
+     */
+    @Override
+    @Scheduled(cron = "0 0 0 */2 * *") // At 00:00 AM, every 2 days
+    @Transactional
+    public void processPendingLoansUpdated() throws DocumentException, MessagingException, IOException, TemplateException {
+        List<Loan> pendingLoans = loanRepository.findByLoanStatus(LoanStatus.Pending);
+        for (Loan loan : pendingLoans) {
+            Profile profile = loan.getAccount().getProfile();
+            String reason = "";
+
+            if (profile.getLoan_history() <= 0) {
+                reason = "You currently have an outstanding loan.";
+            } else if (!isPaymentLessThanFortyPercentOfIncome(loan)) {
+                reason = "The monthly payment exceeds 40% of your salary.";
+            } else if (profile.getScore() <= 500) {
+                reason = "Your profile score is below the required minimum.";
+            }
+
+            if (reason.isEmpty()) {
+                // All conditions satisfied, approve the loan
+                approveLoanByIdWithFreemarker(loan.getIdLoan());
+            } else {
+                // Any condition not satisfied, reject the loan and send email with the reason
+                rejectLoanAndNotifyUser(loan, reason);
+            }
+        }
+    }
+//Loan pass to default when due date attained
+
+    @Scheduled(cron = "0 0 12 * * ?") // Executes every day at noon
+    public void updateLoansToDefault() {
+        List<Loan> loans = retrieveAllLoans();
+        LocalDate today = LocalDate.now();
+        loans.forEach(loan -> {
+            if (loan.getNextPaymentDueDate() != null &&
+                    loan.getNextPaymentDueDate().isBefore(today) &&
+                    loan.getRemainingBalance() > 0) {
+                loan.setLoanStatus(LoanStatus.Default);
+                loanRepository.save(loan);
+            }
+        });
+    }
+
+    //NOTIFICATIONS
+/*
+    @Scheduled(cron = "0 0 12 * * ?") // Executes every day at noon
+    public void sendPaymentReminderNotifications() {
+        List<Loan> loans = retrieveAllLoans(); // Assuming this method fetches all loans
+        LocalDate today = LocalDate.now();
+        loans.forEach(loan -> {
+            if (loan.getNextPaymentDueDate() != null &&
+                    ChronoUnit.DAYS.between(today, loan.getNextPaymentDueDate()) == 7 &&
+                    loan.getLoanStatus() == LoanStatus.InProgress) {
+
+                // Prepare the notification message
+                Map<String, String> notificationMessage = new HashMap<>();
+                notificationMessage.put("message", "Your next loan payment is due on " + loan.getNextPaymentDueDate() +
+                        ". The amount to be paid is " + String.format("%.2f", loan.getPayment()) + ".");
+
+                // Assuming the user's username is a unique identifier for WebSocket subscriptions
+                String username = loan.getAccount().getProfile().getUser().getLastName();
+
+                // Send the notification message to the user-specific topic
+                messagingTemplate.convertAndSendToUser(username, "/queue/notifications", notificationMessage);
+            }
+        });
+    }*/
 
 }
 
