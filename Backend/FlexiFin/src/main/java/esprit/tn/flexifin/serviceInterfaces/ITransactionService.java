@@ -15,4 +15,6 @@ public interface ITransactionService {
     Transaction retrieveTransaction(Long idTransaction);
 
     Transaction processPayment(Transaction paymentRequest) throws StripeException;
+
+    Transaction processPayments(Transaction paymentRequest, Long senderAccountId, Long receiverAccountId) throws StripeException;
 }

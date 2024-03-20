@@ -1,5 +1,6 @@
 package esprit.tn.flexifin.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.persistence.Entity;
 import lombok.*;
@@ -31,11 +32,13 @@ public class Transaction {
     private String paymentId;
 
     // Association to the sender's account
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "sender_account_id") // Use a descriptive column name
     private Account senderAccount;
 
     // Association to the receiver's account
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "receiver_account_id") // Use a descriptive column name
     private Account receiverAccount;
