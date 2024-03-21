@@ -1,8 +1,10 @@
 package esprit.tn.flexifin.serviceInterfaces;
 import com.itextpdf.text.DocumentException;
+import com.stripe.exception.StripeException;
 import esprit.tn.flexifin.entities.Loan;
 import esprit.tn.flexifin.entities.LoanStatus;
 import esprit.tn.flexifin.entities.LoanType;
+import esprit.tn.flexifin.entities.Transaction;
 import freemarker.template.TemplateException;
 import jakarta.mail.MessagingException;
 
@@ -56,4 +58,6 @@ public interface ILoanService {
 
     public String approveLoanByIdWithFreemarker(Long loanId) throws DocumentException, MessagingException, IOException, TemplateException;
 
+    //Remboursement et Virement de pret (USER-ADMIN account)
+    Transaction processLoanTransactionWithSpecificLoan(Long senderAccountId, Long receiverAccountId, Transaction paymentRequest, Long loanId) throws StripeException;
 }

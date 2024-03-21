@@ -61,11 +61,9 @@ public Transaction processPayments(Transaction paymentRequest, Long senderAccoun
     params.put("currency", paymentRequest.getCurrency().toString().toLowerCase());
 
     // Choisir un payment_method en fonction du besoin de simuler un échec
-    boolean simulateFailure = true;
-    String paymentMethod = simulateFailure ? "pm_card_chargeDeclined" : "pm_card_visa";
-    params.put("payment_method", paymentMethod);
 
-    //params.put("payment_method", "pm_card_visa");
+
+    params.put("payment_method", "pm_card_visa");
     params.put("payment_method_types", Collections.singletonList("card"));
 
     //recuperation du userid

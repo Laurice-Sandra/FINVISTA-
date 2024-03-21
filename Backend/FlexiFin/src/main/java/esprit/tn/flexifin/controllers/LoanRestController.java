@@ -1,9 +1,11 @@
 package esprit.tn.flexifin.controllers;
 
 import com.itextpdf.text.DocumentException;
+import com.stripe.exception.StripeException;
 import esprit.tn.flexifin.entities.Loan;
 import esprit.tn.flexifin.entities.LoanStatus;
 import esprit.tn.flexifin.entities.LoanType;
+import esprit.tn.flexifin.entities.Transaction;
 import esprit.tn.flexifin.serviceInterfaces.ILoanService;
 import freemarker.template.TemplateException;
 import jakarta.mail.MessagingException;
@@ -122,5 +124,9 @@ public class LoanRestController {
     public ResponseEntity<String> processPendingLoansUpdated() throws DocumentException, MessagingException, IOException, TemplateException {
         iLoanService.processPendingLoansUpdated();
         return ResponseEntity.ok("Pending loans updated with success");
+    }
+    @PostMapping("/loanTransaction/{send}/{receive}/{idL}")
+    public Transaction processLoanTransactionWithSpecificLoan(@PathVariable("send") Long senderAccountId,@PathVariable("receive") Long receiverAccountId,@RequestBody Transaction paymentRequest, @PathVariable("idL")Long loanId) throws StripeException {
+        return iLoanService.processLoanTransactionWithSpecificLoan(senderAccountId, receiverAccountId, paymentRequest, loanId);
     }
 }

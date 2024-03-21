@@ -1,14 +1,19 @@
 package esprit.tn.flexifin.serviceImp;
 
 import com.itextpdf.text.*;
+import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
+import com.stripe.exception.StripeException;
 import esprit.tn.flexifin.entities.*;
 import esprit.tn.flexifin.repositories.AccountRepository;
 import esprit.tn.flexifin.repositories.LoanRepository;
 import esprit.tn.flexifin.repositories.ProfileRepository;
+import esprit.tn.flexifin.repositories.TransactionRepository;
+import esprit.tn.flexifin.serviceInterfaces.IAccountService;
 import esprit.tn.flexifin.serviceInterfaces.ILoanService;
 import esprit.tn.flexifin.serviceInterfaces.IProfileService;
+import esprit.tn.flexifin.serviceInterfaces.ITransactionService;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
 import jakarta.mail.MessagingException;
@@ -39,7 +44,10 @@ public class LoanServiceImp implements ILoanService {
     LoanRepository loanRepository;
     AccountRepository accountRepository;
     IProfileService iProfileService;
+    IAccountService iAccountService;
+    ITransactionService iTransactionService;
     ProfileRepository profileRepository;
+    TransactionRepository transactionRepository;
 
     private static float tmm = 0.08f; // Valeur initiale du TMM, peut être configurée
     private static final float FIXED_PART = 0.12F; // Partie fixe
@@ -202,8 +210,67 @@ return loanRepository.findByLoanStatus(status);
         return (amount * interestRate) / (1 - Math.pow(1 + interestRate, -totalPeriods));
     }
 
+    @Override
+    public String createLoanSimulationPdf(Loan loan) throws DocumentException, FileNotFoundException {
+        Document document = new Document();
+        String filePath = "D:\\PIDEV PROJECT\\loan_simulation." + loan.getIdLoan() + ".pdf";
+        PdfWriter.getInstance(document, new FileOutputStream(filePath));
 
-@Override
+        document.open();
+        // Title
+        Font titleFont = new Font(Font.FontFamily.HELVETICA, 18, Font.BOLD, BaseColor.BLUE);
+        Paragraph title = new Paragraph("LOAN CONTRACT", titleFont);
+        title.setAlignment(Element.ALIGN_CENTER);
+        document.add(title);
+
+        // User Information
+        String userName = loan.getAccount().getProfile().getUser().getFirstName() + " " + loan.getAccount().getProfile().getUser().getLastName();
+        Font userFont = new Font(Font.FontFamily.HELVETICA, 14, Font.NORMAL, BaseColor.DARK_GRAY);
+        Paragraph userParagraph = new Paragraph("Borrower: " + userName, userFont);
+        document.add(userParagraph);
+
+        // Loan Information
+        document.add(new Paragraph(" "));
+        Font infoFont = new Font(Font.FontFamily.HELVETICA, 12, Font.NORMAL, BaseColor.BLACK);
+        document.add(new Paragraph("LOAN ID: " + loan.getIdLoan(), infoFont));
+        document.add(new Paragraph("START DATE: " + formatDate(loan.getStartDate()), infoFont));
+        LocalDate endDate = loan.getStartDate().plusMonths(loan.getDuration() * 12); // Assuming duration is in years
+        document.add(new Paragraph("DATE OF CLOSURE: " + formatDate(endDate), infoFont));
+        document.add(new Paragraph("LOAN COST: $" + String.format("%.2f", loan.getLoanCost()), infoFont));
+
+        document.add(new Paragraph(" "));
+
+        List<String[]> simulationResults = simulateLoan(loan);
+        PdfPTable table = new PdfPTable(5); // 5 columns
+
+        // Style for table headers
+        Font tableHeaderFont = new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD, BaseColor.WHITE);
+        BaseColor headerBackgroundColor = new BaseColor(0, 121, 182); // A blue color
+
+        // Add header row
+        for (String header : simulationResults.get(0)) {
+            PdfPCell cell = new PdfPCell(new Phrase(header, tableHeaderFont));
+            cell.setBackgroundColor(headerBackgroundColor);
+            table.addCell(cell);
+        }
+
+        // Add data rows
+        Font tableBodyFont = new Font(Font.FontFamily.HELVETICA, 12, Font.NORMAL, BaseColor.BLACK);
+        simulationResults.stream().skip(1).forEach(row -> {
+            for (String cell : row) {
+                table.addCell(new Phrase(cell, tableBodyFont));
+            }
+        });
+
+        document.add(table);
+        document.close();
+
+        return filePath;
+    }
+
+
+
+/*@Override
     public String createLoanSimulationPdf(Loan loan) throws DocumentException, FileNotFoundException {
         Document document = new Document();
         String filePath = "D:\\PIDEV PROJECT\\loan_simulation." + loan.getIdLoan() + ".pdf";
@@ -246,7 +313,7 @@ return loanRepository.findByLoanStatus(status);
         document.close();
 
         return filePath;
-    }
+    }*/
 
     private String formatDate(LocalDate date) {
         return date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
@@ -458,6 +525,43 @@ public boolean isPaymentLessThanFortyPercentOfIncome(Loan loan) {
             }
         });
     }
+//Remboursement et Virement de pret (USER-ADMIN account)
+    @Override
+    public Transaction processLoanTransactionWithSpecificLoan(Long senderAccountId, Long receiverAccountId, Transaction paymentRequest, Long loanId) throws StripeException {
+
+        Loan loan = loanRepository.findById(loanId).orElse(null);
+
+        Transaction processedTransaction = iAccountService.processTransactionAndAdjustBalance(senderAccountId,receiverAccountId,paymentRequest);
+
+        if (processedTransaction.getStatus() == TranStatus.COMPLETED) {
+            switch (processedTransaction.getType()) {
+                case LOAN_REPAYMENT:
+                    if (loan.getAccount().getIdAccount().equals(senderAccountId) && ((loan.getLoanStatus() == LoanStatus.InProgress || loan.getLoanStatus() == LoanStatus.Default))) {
+                        // Réduction du solde restant du prêt de l'expéditeur
+                        loan.setRemainingBalance(loan.getRemainingBalance() - paymentRequest.getAmount());
+                        if (loan.getRemainingBalance() <= 0) {
+                            loan.setLoanStatus(LoanStatus.Repaid);
+                        }
+                        loanRepository.save(loan);
+                    }
+                    break;
+
+                case LOAN_DISBURSEMENT:
+                    if (loan.getAccount().getIdAccount().equals(receiverAccountId) && loan.getLoanStatus() == LoanStatus.Approved) {
+                        // Changement du statut du prêt du destinataire de APPROUVÉ à EN COURS
+                        loan.setLoanStatus(LoanStatus.InProgress);
+                        loanRepository.save(loan);
+                    }
+                    break;
+
+
+            }
+        }
+
+        // Sauvegarder la transaction mise à jour dans la base de données
+        return processedTransaction;
+    }
+
 
     //NOTIFICATIONS
 /*
