@@ -11,6 +11,7 @@ public interface IInsuranceContratService {
 
     InsuranceContrat addInsuranceContrat(InsuranceContrat insuranceContrat);
 
+
     InsuranceContrat updateInsuranceContrat (InsuranceContrat insuranceContrat);
 
     InsuranceContrat retrieveInsuranceContrat (Long idContrat);

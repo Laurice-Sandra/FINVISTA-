@@ -21,16 +21,17 @@ public class InsuranceContrat implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idContrat;
     private float prime;
-    private Date startDate;
+    private Date startDate= new Date(System.currentTimeMillis());
     private Date EndDate;
-    //private Long matricule;
     @Temporal(TemporalType.DATE)
     private LocalDate dateEffet ;
     @Enumerated(EnumType.STRING)
     private TypeContrat type;
-
+    private String designation;
+    private float montant;
     @OneToOne
     private Sinister sinister;
-    @OneToOne(mappedBy = "insuranceContrat")
-    private Loan loan;
+
+
+
 }

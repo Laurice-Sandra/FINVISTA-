@@ -24,10 +24,6 @@ public class Account implements Serializable {
     private float balance;
     private LocalDate openDate;
 
-
-    @OneToMany(mappedBy = "account")
-    @JsonIgnore
-    private Set<Loan> loans ;
     @OneToOne
     @JsonIgnore
     private Profile profile;
