@@ -16,4 +16,6 @@ public interface IProfileService {
     float calculateLoanHistory(Long profileId);
 
     float calculateProfileScore(Long idProfile);
+
+    void updateProfileScores(Long profileId);
 }

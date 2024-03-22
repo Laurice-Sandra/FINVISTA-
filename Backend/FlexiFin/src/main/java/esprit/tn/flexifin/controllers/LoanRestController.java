@@ -12,6 +12,7 @@ import jakarta.mail.MessagingException;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.FileNotFoundException;
@@ -49,11 +50,7 @@ public class LoanRestController {
         return this.iLoanService.retrieveLoan(id);
     }
 
-    @PutMapping("/UpdateLoan")
-    //@PreAuthorize("hasAnyAuthority('SCOPE_ADMIN')")
-    public Loan updateLoan(@RequestBody Loan loan) {
-        return this.iLoanService.updateLoan(loan);
-    }
+
 
     //FILTERS
     @GetMapping("/getLoanbystatus/{status}")
@@ -74,7 +71,7 @@ public class LoanRestController {
         return iLoanService.getLoanByUserId(idUser);
     }
 
-@DeleteMapping("/deleteLoan/{idLoan}")
+    @DeleteMapping("/deleteLoan/{idLoan}")
     public void removeLoan(@PathVariable("idLoan") Long idLoan) {
         iLoanService.removeLoan(idLoan);
     }
@@ -82,7 +79,7 @@ public class LoanRestController {
 
 
 
-@PutMapping("/generatetestpdf")
+    @PutMapping("/generatetestpdf")
     public String createLoanSimulationPdf(@RequestBody Loan loan) throws DocumentException, FileNotFoundException {
         return iLoanService.createLoanSimulationPdf(loan);
     }
@@ -94,13 +91,9 @@ public class LoanRestController {
         return iLoanService.simulateLoan(loan);
     }
     @PostMapping("/updateTmm/{tmm}")
-    public String updateTmm(@PathVariable("tmm") float newTmm) {
+    public String updateTmm(@PathVariable("tmm") double newTmm) {
         iLoanService.updateTmm(newTmm);
         return "TMM updated successfully to " + newTmm;
-    }
-@PutMapping("loanApproval/{idL}")
-    public String approveLoan(@PathVariable("idL") Long loanId) throws DocumentException, FileNotFoundException {
-        return iLoanService.approveLoan(loanId);
     }
 
     // Endpoint temporaire pour tester la mise à jour des dates d'échéance
@@ -129,4 +122,17 @@ public class LoanRestController {
     public Transaction processLoanTransactionWithSpecificLoan(@PathVariable("send") Long senderAccountId,@PathVariable("receive") Long receiverAccountId,@RequestBody Transaction paymentRequest, @PathVariable("idL")Long loanId) throws StripeException {
         return iLoanService.processLoanTransactionWithSpecificLoan(senderAccountId, receiverAccountId, paymentRequest, loanId);
     }
+
+    // Endpoint pour tester l'envoi de la notification Twilio
+    @GetMapping("/send-reminder/{loanId}")
+    public ResponseEntity<String> sendLoanPaymentReminder(@PathVariable Long loanId) {
+        try {
+            iLoanService.sendPreDueDateNotification(loanId);
+            return ResponseEntity.ok("Notification sent successfully.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to send notification: " + e.getMessage());
+        }
+    }
+
+
 }

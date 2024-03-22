@@ -7,28 +7,27 @@ import esprit.tn.flexifin.entities.LoanType;
 import esprit.tn.flexifin.entities.Transaction;
 import freemarker.template.TemplateException;
 import jakarta.mail.MessagingException;
+import org.springframework.scheduling.annotation.Scheduled;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 
 public interface ILoanService {
-    //void sendEmailWithAttachment(String to, String subject, String body, String attachmentPath) throws MessagingException;
 
-    List<Loan> retrieveAllLoans();
+    double updateTmm(double newTmm);
 
     Loan addLoan(Loan loan);
     Loan addLoanAssignAccount(Loan loan, Long idAccount);
 
-    Loan updateLoan (Loan loan);
+    List<Loan> retrieveAllLoans();
 
     Loan retrieveLoan (Long idLoan);
 
     void removeLoan(Long idLoan);
-
-    public double calculateLoanCapacity(double monthlyIncome, double monthlyDebtPayments, double monthlyExpenses);
 
     List<Loan> getLoanByStatus(LoanStatus status);
 
@@ -38,26 +37,32 @@ public interface ILoanService {
     public List<Loan> getLoanByUserId(Long idUser);
 
 
+    double calculatePayment(float amount, double interestRate, int totalPeriods);
 
-    String createLoanSimulationPdf(Loan loan) throws DocumentException, FileNotFoundException;
-
+    public double calculateLoanCapacity(double monthlyIncome, double monthlyDebtPayments, double monthlyExpenses);
 
     List<String[]> simulateLoan(Loan loan);
+    String createLoanSimulationPdf(Loan loan) throws DocumentException, FileNotFoundException;
 
-    void updateTmm(float newTmm);
+    void sendEmailWithFreemarkerTemplate(String to, String subject, Map<String, Object> templateModel, String attachmentPath, String templateName) throws MessagingException, IOException, TemplateException;
 
-    double calculatePayment(float amount, float interestRate, int totalPeriods);
+    public String approveLoanByIdWithFreemarker(Long loanId) throws DocumentException, MessagingException, IOException, TemplateException;
 
-    String approveLoan(Long loanId) throws DocumentException, FileNotFoundException;
+
     void updatePaymentDueDates();
 
     public void processPendingLoansUpdated() throws DocumentException, MessagingException, IOException, TemplateException;
     void confirmLoan(Long idLoan);
 
-    //String approveLoanById(Long loanId) throws DocumentException, FileNotFoundException, MessagingException;
 
-    public String approveLoanByIdWithFreemarker(Long loanId) throws DocumentException, MessagingException, IOException, TemplateException;
 
     //Remboursement et Virement de pret (USER-ADMIN account)
     Transaction processLoanTransactionWithSpecificLoan(Long senderAccountId, Long receiverAccountId, Transaction paymentRequest, Long loanId) throws StripeException;
+
+
+    //NOTIFICATION
+    @Scheduled(cron = "* * * * * ?") // Executed every day at noon
+    void sendPreDueDateNotifications();
+
+    void sendPreDueDateNotification(Long idLoan);
 }

@@ -5,11 +5,10 @@ import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
 import com.stripe.exception.StripeException;
+import com.twilio.rest.api.v2010.account.Message;
+import com.twilio.type.PhoneNumber;
 import esprit.tn.flexifin.entities.*;
-import esprit.tn.flexifin.repositories.AccountRepository;
-import esprit.tn.flexifin.repositories.LoanRepository;
-import esprit.tn.flexifin.repositories.ProfileRepository;
-import esprit.tn.flexifin.repositories.TransactionRepository;
+import esprit.tn.flexifin.repositories.*;
 import esprit.tn.flexifin.serviceInterfaces.IAccountService;
 import esprit.tn.flexifin.serviceInterfaces.ILoanService;
 import esprit.tn.flexifin.serviceInterfaces.IProfileService;
@@ -18,6 +17,7 @@ import freemarker.template.Template;
 import freemarker.template.TemplateException;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.springframework.core.io.FileSystemResource;
@@ -48,104 +48,62 @@ public class LoanServiceImp implements ILoanService {
     ITransactionService iTransactionService;
     ProfileRepository profileRepository;
     TransactionRepository transactionRepository;
-
-    private static float tmm = 0.08f; // Valeur initiale du TMM, peut être configurée
-    private static final float FIXED_PART = 0.12F; // Partie fixe
+    AppSettingRepository appSettingRepository;
+    UserRepository userRepository;
 
     private final JavaMailSender emailSender;
     private FreeMarkerConfigurer freemarkerConfigurer;
 
-
-
-
-
-
-
-
-
-
-
+    // I-Fixing Loan TMM
     @Override
-    public void updateTmm(float newTmm) {
-        LoanServiceImp.tmm = newTmm;
+    public double updateTmm(double newTmm) {
+        AppSetting appSetting = appSettingRepository.findFirstByOrderByIdAsc().orElse(new AppSetting());
+        appSetting.setTmm(newTmm);
+        appSettingRepository.save(appSetting);
+        return appSetting.getTmm();
     }
-
-    private float getInterestRate() {
-
-        return tmm + FIXED_PART;
+    private double getInterestRate() {
+        return appSettingRepository.findFirstByOrderByIdAsc()
+                .map(setting -> setting.getTmm() + setting.getFixedInterestPart())
+                .orElseThrow(() -> new IllegalStateException("AppSetting is not configured."));
     }
-@Override
+    //II-CRUD AND FILTERS
+
+    public Loan addLoan(Loan loan){
+        return loanRepository.save(loan);
+    }
+    @Override
+    public Loan addLoanAssignAccount(Loan loan, Long idAccount) {
+        Account account = accountRepository.findById(idAccount)
+                .orElseThrow(() -> new EntityNotFoundException("Account not found with ID: " + idAccount));
+
+        loan.setLoanStatus(LoanStatus.Pending);
+        loan.setInterestRate(getInterestRate());
+        loan.setAccount(account);
+
+        if (account.getProfile() != null) {
+            iProfileService.updateProfileScores(account.getProfile().getIdProfile());
+
+        }
+        return loanRepository.save(loan);
+    }
+    @Override
     public List<Loan> retrieveAllLoans(){
         return loanRepository.findAll();
     }
-
-    public Loan addLoan(Loan loan){
-
-        return loanRepository.save(loan);
-    }
-@Override
-public Loan addLoanAssignAccount(Loan loan, Long idAccount) {
-    Optional<Account> accountOpt = accountRepository.findById(idAccount);
-
-    if (!accountOpt.isPresent()) {
-        // Gestion de compte non trouvé, retourner le prêt tel quel ou null
-        return null; // ou gestion alternative
-    }
-
-    Account account = accountOpt.orElse(null);
-    loan.setInterestRate(getInterestRate());
-    loan.setRemainingBalance(loan.getAmmountRequest());
-    loan.setNextPaymentDueDate(calculateFirstDueDate(loan.getStartDate(), loan.getRepaymentMethod()));
-    // Assurez-vous que cette méthode existe et retourne un taux valide
-    loan.setAccount(account);
-
-    // Continuez seulement si le compte a un profil associé
-    if (account.getProfile() != null) {
-        Long profileId = account.getProfile().getIdProfile();
-
-        Optional<Profile> profileOpt = profileRepository.findById(profileId);
-        if (profileOpt.isPresent()) {
-            Profile profile = profileOpt.orElse(null);
-
-            // Calcul du score et de l'historique de prêt, puis mise à jour du profil
-            float hist = iProfileService.calculateLoanHistory(profileId);
-            float score = iProfileService.calculateProfileScore(profileId);
-
-            profile.setLoan_history((int) hist);
-            profile.setScore((int) score);
-
-            profileRepository.save(profile); // Sauvegardez les modifications du profil
-        }
-    }
-
-    return loanRepository.save(loan); // Sauvegardez et retournez le prêt
-}
-@Override
-    public  Loan updateLoan (Loan loan){
-        Optional<Loan> contratOptional = loanRepository.findById(loan.getIdLoan());
-        if (contratOptional.isPresent()) {
-            Loan loanToUpdate = contratOptional.orElse(null);
-            loanToUpdate.setLoanStatus(LoanStatus.InProgress);
-            return loanRepository.save(loanToUpdate);
-        }
-
-        return loanRepository.save(loan);
-    }
-@Override
+    @Override
     public Loan retrieveLoan (Long idLoan){
         return loanRepository.findById(idLoan).orElse(null);
     }
-@Override
+    @Override
     public void removeLoan(Long idLoan){
 
         loanRepository.deleteById(idLoan);
     }
-
-    //SEMI DEFINE SERVICES (FILTERS)
     @Override
-   public List<Loan> getLoanByStatus(LoanStatus status){
-return loanRepository.findByLoanStatus(status);
-   }
+    public List<Loan> getLoanByStatus(LoanStatus status){
+        return loanRepository.findByLoanStatus(status);
+    }
     @Override
     public List<Loan> getLoanByStartDate(LocalDate date){
         return loanRepository.findByStartDate(date);
@@ -159,18 +117,23 @@ return loanRepository.findByLoanStatus(status);
         return loanRepository.findByUserId(idUser);
     }
 
-
-
-@Override
+    //III-LOAN SIMULATION
+    @Override
     public double calculateLoanCapacity(double monthlyIncome, double monthlyDebtPayments, double monthlyExpenses) {
         return monthlyIncome - (monthlyDebtPayments + monthlyExpenses);
     }
-@Override
+
+    @Override
+    public double calculatePayment(float amount, double interestRate, int totalPeriods) {
+        return (amount * interestRate) / (1 - Math.pow(1 + interestRate, -totalPeriods));
+    }
+
+    @Override
     public List<String[]> simulateLoan(Loan loan) {
-        float interestRate = loan.getInterestRate();
+        double interestRate = loan.getInterestRate();
         RepaymentMethod repaymentMethod = loan.getRepaymentMethod();
         int totalPeriods = repaymentMethod == RepaymentMethod.MENSUALITY ? loan.getDuration() * 12 : loan.getDuration();
-        float periodicInterestRate = repaymentMethod == RepaymentMethod.MENSUALITY ? interestRate / 12 : interestRate;
+        double periodicInterestRate = repaymentMethod == RepaymentMethod.MENSUALITY ? interestRate / 12 : interestRate;
         double payment = calculatePayment(loan.getAmmountRequest(), periodicInterestRate, totalPeriods);
 
         List<String[]> simulationResults = new ArrayList<>();
@@ -181,7 +144,7 @@ return loanRepository.findByLoanStatus(status);
         float totalLoanCost = 0;
 
         for (int period = 1; period <= totalPeriods; period++) {
-            float interestForPeriod = remainingBalance * periodicInterestRate;
+            double interestForPeriod = remainingBalance * periodicInterestRate;
             float amortization = (float) (payment - interestForPeriod);
 
 
@@ -197,23 +160,20 @@ return loanRepository.findByLoanStatus(status);
         }
 
         loan.setLoanCost(totalLoanCost);
+        loan.setRemainingBalance(loan.getAmmountRequest()+totalLoanCost);
         loan.setPayment((float) payment);
-        // Sauvegardez l'entité Loan avec le coût total du prêt et payment mis à jour
         loanRepository.save(loan);
 
         return simulationResults;
     }
 
-
-
-    public double calculatePayment(float amount, float interestRate, int totalPeriods) {
-        return (amount * interestRate) / (1 - Math.pow(1 + interestRate, -totalPeriods));
-    }
-
+    //IV-PDF GENERATION
     @Override
     public String createLoanSimulationPdf(Loan loan) throws DocumentException, FileNotFoundException {
         Document document = new Document();
-        String filePath = "D:\\PIDEV PROJECT\\loan_simulation." + loan.getIdLoan() + ".pdf";
+        AppSetting appSetting = appSettingRepository.findFirstByOrderByIdAsc().orElse(new AppSetting());
+
+        String filePath = appSetting.getFilePath() + loan.getIdLoan() + ".pdf";
         PdfWriter.getInstance(document, new FileOutputStream(filePath));
 
         document.open();
@@ -264,95 +224,144 @@ return loanRepository.findByLoanStatus(status);
 
         document.add(table);
         document.close();
-
         return filePath;
     }
-
-
-
-/*@Override
-    public String createLoanSimulationPdf(Loan loan) throws DocumentException, FileNotFoundException {
-        Document document = new Document();
-        String filePath = "D:\\PIDEV PROJECT\\loan_simulation." + loan.getIdLoan() + ".pdf";
-        PdfWriter.getInstance(document, new FileOutputStream(filePath));
-
-        document.open();
-        // Title
-        Font titleFont = new Font(Font.FontFamily.HELVETICA, 18, Font.BOLD);
-        Paragraph title = new Paragraph("LOAN CONTRACT", titleFont);
-        title.setAlignment(Element.ALIGN_CENTER);
-        document.add(title);
-
-        // Loan Information
-        document.add(new Paragraph(" "));
-        Font infoFont = new Font(Font.FontFamily.HELVETICA, 12);
-        document.add(new Paragraph("LOAN ID: " + loan.getIdLoan(), infoFont));
-        document.add(new Paragraph("START DATE: " + formatDate(loan.getStartDate()), infoFont));
-        LocalDate endDate = loan.getStartDate().plusMonths(loan.getDuration() * 12); // Assuming duration is in years
-        document.add(new Paragraph("DATE OF CLOSURE: " + formatDate(endDate), infoFont));
-        // Add other necessary loan information here
-
-        document.add(new Paragraph(" "));
-
-        List<String[]> simulationResults = simulateLoan(loan);
-        PdfPTable table = new PdfPTable(5); // 5 columns
-
-        // Add header row
-        for (String header : simulationResults.get(0)) {
-            table.addCell(new Phrase(header, new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD)));
-        }
-
-        // Add data rows
-        simulationResults.stream().skip(1).forEach(row -> {
-            for (String cell : row) {
-                table.addCell(new Phrase(cell, new Font(Font.FontFamily.HELVETICA, 12)));
-            }
-        });
-
-        document.add(table);
-        document.close();
-
-        return filePath;
-    }*/
 
     private String formatDate(LocalDate date) {
         return date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
     }
-@Override
-    public String approveLoan(Long loanId) throws DocumentException, FileNotFoundException {
-        Optional<Loan> loanOpt = loanRepository.findById(loanId);
 
+    private LocalDate calculateFirstDueDate(LocalDate startDate, RepaymentMethod repaymentMethod) {
+        return repaymentMethod == RepaymentMethod.MENSUALITY ? startDate.plusMonths(1) : startDate.plusYears(1);
+    }
+
+    // V-EMAIL SENDING
+    @Override
+    public void sendEmailWithFreemarkerTemplate(String to, String subject, Map<String, Object> templateModel, String attachmentPath, String templateName) throws MessagingException, IOException, TemplateException {
+        MimeMessage mimeMessage = emailSender.createMimeMessage();
+        MimeMessageHelper messageHelper = new MimeMessageHelper(mimeMessage, true);
+        messageHelper.setFrom("noreply@finvistaflexifin.com");
+        messageHelper.setTo(to);
+        messageHelper.setSubject(subject);
+
+        // Configuration de FreeMarker
+        Template freemarkerTemplate = freemarkerConfigurer.getConfiguration().getTemplate(templateName);
+        String htmlBody = FreeMarkerTemplateUtils.processTemplateIntoString(freemarkerTemplate, templateModel);
+        messageHelper.setText(htmlBody, true);
+
+        // Ajout de la pièce jointe si nécessaire
+        if (attachmentPath != null && !attachmentPath.isEmpty()) {
+            FileSystemResource file = new FileSystemResource(attachmentPath);
+            messageHelper.addAttachment(file.getFilename(), file);
+        }
+
+        emailSender.send(mimeMessage);
+    }
+
+    //VI-LOAN APPROVAL AND REJECTION
+
+    private String conditionforLoanApproval(Loan loan) {
+
+        double monthlyPayment = calculatePayment(loan.getAmmountRequest(), loan.getInterestRate(), loan.getDuration() * 12);
+        double monthlyIncome = loan.getAccount().getProfile().getIncome();
+        boolean isPaymentLessThanFortyPercentOfIncome=   monthlyPayment < (0.4 * monthlyIncome);
+        Profile profile = loan.getAccount().getProfile();
+        if (profile.getLoan_history() <= 0) {
+            return "You currently have an outstanding loan.";
+        } else if (!isPaymentLessThanFortyPercentOfIncome) {
+            return "The monthly payment exceeds 40% of your salary.";
+        } else if (profile.getScore() <= 500) {
+            return "Your profile score is below the required minimum.";
+        }
+        return "";
+    }
+
+    @Override
+    public String approveLoanByIdWithFreemarker(Long loanId) throws DocumentException, MessagingException, IOException, TemplateException {
+        Optional<Loan> loanOpt = loanRepository.findById(loanId);
 
         if (!loanOpt.isPresent()) {
             return "Loan with ID " + loanId + " does not exist.";
         }
 
         Loan loan = loanOpt.orElse(null);
-        if (loan.getLoanStatus()!= LoanStatus.Pending) {
+        if (loan.getLoanStatus() != LoanStatus.Pending) {
             return "Loan is not in PENDING status.";
         }
 
-        simulateLoan(loan);
+        if (loan.getAccount() == null || loan.getAccount().getProfile() == null || loan.getAccount().getProfile().getUser() == null) {
+            return "Account/Profile/User information is missing for loan ID " + loanId;
+        }
 
-        // Mettre à jour le statut du prêt à APPROVED après la simulation réussie
+        String rejectionReason = conditionforLoanApproval(loan);
+        if (!rejectionReason.isEmpty()) {
+            return rejectionReason;
+        }
+
+        loan.setStartDate(LocalDate.now());
+        loan.setNextPaymentDueDate(calculateFirstDueDate(loan.getStartDate(), loan.getRepaymentMethod()));
+        simulateLoan(loan);
         loan.setLoanStatus(LoanStatus.Approved);
         loanRepository.save(loan);
 
-        // Générer le contrat de prêt après l'approbation
+        // Chemin vers le contrat de prêt généré
         String contractPath = createLoanSimulationPdf(loan);
 
-        // Vous pouvez stocker le chemin du contrat dans le prêt ou effectuer d'autres actions nécessaires
+        // Préparation du modèle pour FreeMarker
+        Map<String, Object> templateModel = new HashMap<>();
+        User user = loan.getAccount().getProfile().getUser();
+        templateModel.put("name", user.getFirstName()); // Ensure this matches your User entity's method to get the name
+        templateModel.put("confirmationUrl", "http://yourconfirmationlink.com"); // Adjust this to your actual confirmation link
+        templateModel.put("contractPath", contractPath);
 
-        return "Loan with ID " + loanId + " has been approved and contract generated at: " + contractPath;
+        // Appel du service d'envoi d'email modifié pour utiliser FreeMarker
+        String to = user.getEmail();
+        String template ="email-template.ftl";
+        sendEmailWithFreemarkerTemplate(to, "Loan Application Update", templateModel, contractPath,template);
+
+        return "Loan with ID " + loanId + " has been approved. Contract sent to: " + to;
     }
 
+    //LOAN REJECTION
+    private void rejectLoanAndNotifyUser(Long loanId) throws MessagingException, IOException, TemplateException {
+        Loan loan = loanRepository.findById(loanId)
+                .orElseThrow(() -> new EntityNotFoundException("Loan not found with ID: " + loanId));
+        String reason = conditionforLoanApproval(loan);
+        loan.setLoanStatus(LoanStatus.Denied);
+        loanRepository.save(loan);
 
+        Map<String, Object> templateModel = new HashMap<>();
+        User user = loan.getAccount().getProfile().getUser();
+        templateModel.put("user", user);
+        templateModel.put("name", user.getFirstName());
+        templateModel.put("reason", reason);
+        String to = user.getEmail();
 
-    private LocalDate calculateFirstDueDate(LocalDate startDate, RepaymentMethod repaymentMethod) {
-        return repaymentMethod == RepaymentMethod.MENSUALITY ? startDate.plusMonths(1) : startDate.plusYears(1);
+        sendEmailWithFreemarkerTemplate(to, "Loan Application Update", templateModel, null, "loan-rejection.ftl");
     }
 
+    //SCHEDULED LOAN APPROVAL AND REJECTION
+    @Override
+    @Scheduled(cron = "0 0 0 */2 * *") // At 00:00 AM, every 2 days
+    @Transactional
+    public void processPendingLoansUpdated() throws DocumentException, MessagingException, IOException, TemplateException {
+        List<Loan> pendingLoans = loanRepository.findByLoanStatus(LoanStatus.Pending);
+        for (Loan loan : pendingLoans) {
+            String reason = conditionforLoanApproval(loan);
+
+            if (reason.isEmpty()) {
+                // All conditions satisfied, approve the loan
+                approveLoanByIdWithFreemarker(loan.getIdLoan());
+            } else {
+                // Any condition not satisfied, reject the loan and send email with the reason
+                rejectLoanAndNotifyUser(loan.getIdLoan());
+            }
+        }
+    }
+
+    //SCHEDULED UPDATE PaymentDueDates
     @Scheduled(cron = "0 1 3 * * ?") // Exécute cette méthode tous les jours à 13:00
+
     @Transactional
     @Override
     public void updatePaymentDueDates() {
@@ -376,7 +385,9 @@ return loanRepository.findByLoanStatus(status);
             }
         }
     }
-@Override
+
+    //VII-LOAN CONFIRMATION
+    @Override
     public void confirmLoan(Long idLoan) {
         Loan loan = loanRepository.findById(idLoan).orElse(null);
         if (loan != null && loan.getLoanStatus() == LoanStatus.Approved) {
@@ -385,133 +396,56 @@ return loanRepository.findByLoanStatus(status);
         }
     }
 
-
-
-    //EMAIL SENDING WITH FREEMARKER
-
-
-
-    public void sendEmailWithFreemarkerTemplate(String to, String subject, Map<String, Object> templateModel, String attachmentPath, String templateName) throws MessagingException, IOException, TemplateException {
-        MimeMessage mimeMessage = emailSender.createMimeMessage();
-        MimeMessageHelper messageHelper = new MimeMessageHelper(mimeMessage, true);
-        messageHelper.setFrom("noreply@finvistaflexifin.com");
-        messageHelper.setTo(to);
-        messageHelper.setSubject(subject);
-
-        // Configuration de FreeMarker
-        Template freemarkerTemplate = freemarkerConfigurer.getConfiguration().getTemplate(templateName);
-        String htmlBody = FreeMarkerTemplateUtils.processTemplateIntoString(freemarkerTemplate, templateModel);
-        messageHelper.setText(htmlBody, true);
-
-        // Ajout de la pièce jointe si nécessaire
-        if (attachmentPath != null && !attachmentPath.isEmpty()) {
-            FileSystemResource file = new FileSystemResource(attachmentPath);
-            messageHelper.addAttachment(file.getFilename(), file);
-        }
-
-        emailSender.send(mimeMessage);
-    }
-
-
-
-//LOAN APPROVAL
-
+    //VIII-PAYMENT SERVICE FOR LOAN
     @Override
-    public String approveLoanByIdWithFreemarker(Long loanId) throws DocumentException, MessagingException, IOException, TemplateException {
-        Optional<Loan> loanOpt = loanRepository.findById(loanId);
+    public Transaction processLoanTransactionWithSpecificLoan(Long senderAccountId, Long receiverAccountId, Transaction paymentRequest, Long loanId) throws StripeException {
 
-        if (!loanOpt.isPresent()) {
-            return "Loan with ID " + loanId + " does not exist.";
-        }
+        Transaction processedTransaction = iAccountService.processTransactionAndAdjustBalance(senderAccountId,receiverAccountId,paymentRequest);
+        Loan loan = loanRepository.findById(loanId).orElse(null);
 
-        Loan loan = loanOpt.orElse(null);
-        if (loan.getLoanStatus() != LoanStatus.Pending) {
-            return "Loan is not in PENDING status.";
-        }
-
-        if (loan.getAccount() == null || loan.getAccount().getProfile() == null || loan.getAccount().getProfile().getUser() == null) {
-            return "Account/Profile/User information is missing for loan ID " + loanId;
-        }
-
-        simulateLoan(loan);
-
-        loan.setLoanStatus(LoanStatus.Approved);
-        loanRepository.save(loan);
-
-        // Chemin vers le contrat de prêt généré
-        String contractPath = createLoanSimulationPdf(loan);
-
-        // Préparation du modèle pour FreeMarker
-        Map<String, Object> templateModel = new HashMap<>();
-        User user = loan.getAccount().getProfile().getUser();
-        templateModel.put("name", user.getFirstName()); // Ensure this matches your User entity's method to get the name
-        templateModel.put("confirmationUrl", "http://yourconfirmationlink.com"); // Adjust this to your actual confirmation link
-        templateModel.put("contractPath", contractPath);
-
-        // Appel du service d'envoi d'email modifié pour utiliser FreeMarker
-        String to = user.getEmail();
-        String template ="email-template.ftl";
-        sendEmailWithFreemarkerTemplate(to, "Loan Application Update", templateModel, contractPath,template);
-
-        return "Loan with ID " + loanId + " has been approved. Contract sent to: " + to;
-    }
-
-
-//Verifying income
-public boolean isPaymentLessThanFortyPercentOfIncome(Loan loan) {
-    double monthlyPayment = calculatePayment(loan.getAmmountRequest(), loan.getInterestRate(), loan.getDuration() * 12);
-    double monthlyIncome = loan.getAccount().getProfile().getIncome();
-    return monthlyPayment < (0.4 * monthlyIncome);
-}
-
-
-    //loan rejection
-
-    private void rejectLoanAndNotifyUser(Loan loan, String reason) throws MessagingException, IOException, TemplateException {
-        loan.setLoanStatus(LoanStatus.Denied);
-        loanRepository.save(loan);
-        Map<String, Object> templateModel = new HashMap<>();
-        User user = loan.getAccount().getProfile().getUser();
-        templateModel.put("user", user);
-        templateModel.put("name", user.getFirstName());
-        templateModel.put("reason", reason);
-        String to = user.getEmail();
-
-        sendEmailWithFreemarkerTemplate(to, "Loan Application Update", templateModel, null, "loan-rejection.ftl");
-    }
-
-    //LOAN APPROVAL AND REJECTION
-    /**
-     * Scheduled task to process pending loans with updated conditions.
-     */
-    @Override
-    @Scheduled(cron = "0 0 0 */2 * *") // At 00:00 AM, every 2 days
-    @Transactional
-    public void processPendingLoansUpdated() throws DocumentException, MessagingException, IOException, TemplateException {
-        List<Loan> pendingLoans = loanRepository.findByLoanStatus(LoanStatus.Pending);
-        for (Loan loan : pendingLoans) {
-            Profile profile = loan.getAccount().getProfile();
-            String reason = "";
-
-            if (profile.getLoan_history() <= 0) {
-                reason = "You currently have an outstanding loan.";
-            } else if (!isPaymentLessThanFortyPercentOfIncome(loan)) {
-                reason = "The monthly payment exceeds 40% of your salary.";
-            } else if (profile.getScore() <= 500) {
-                reason = "Your profile score is below the required minimum.";
+        if (processedTransaction.getType() == TranType.LOAN_REPAYMENT) {
+            if (loan.getAccount().getIdAccount().equals(senderAccountId) && (loan.getLoanStatus() == LoanStatus.InProgress || loan.getLoanStatus() == LoanStatus.Default)) {
+                loan.setRemainingBalance(loan.getRemainingBalance() - paymentRequest.getAmount());
+                if (loan.getRemainingBalance() <= 0) {
+                    loan.setLoanStatus(LoanStatus.Repaid);
+                }
+                loanRepository.save(loan);
             }
-
-            if (reason.isEmpty()) {
-                // All conditions satisfied, approve the loan
-                approveLoanByIdWithFreemarker(loan.getIdLoan());
-            } else {
-                // Any condition not satisfied, reject the loan and send email with the reason
-                rejectLoanAndNotifyUser(loan, reason);
+        } else if (processedTransaction.getType() == TranType.LOAN_DISBURSEMENT) {
+            if (loan.getAccount().getIdAccount().equals(receiverAccountId) && loan.getLoanStatus() == LoanStatus.Approved) {
+                loan.setLoanStatus(LoanStatus.InProgress);
+                loanRepository.save(loan);
             }
         }
-    }
-//Loan pass to default when due date attained
 
+
+        if (processedTransaction.getStatus() == TranStatus.COMPLETED) {
+            switch (processedTransaction.getType()) {
+                case LOAN_REPAYMENT:
+                    loan.setRemainingBalance(loan.getRemainingBalance() - processedTransaction.getAmount());
+                    if (loan.getRemainingBalance() <= 0) {
+                        loan.setLoanStatus(LoanStatus.Repaid);
+                    }
+                    break;
+
+                case LOAN_DISBURSEMENT:
+                    if (loan.getLoanStatus() == LoanStatus.Approved) {
+                        loan.setLoanStatus(LoanStatus.InProgress);
+                    }
+                    break;
+
+                default:
+                    // Gérer d'autres types de transactions si nécessaire
+                    break;
+
+            }
+        }
+
+        // Sauvegarder la transaction mise à jour dans la base de données
+        return processedTransaction;
+    }
+
+    //IX-SCHEDULED LOAN PASS TO DEFAULT
     @Scheduled(cron = "0 0 12 * * ?") // Executes every day at noon
     public void updateLoansToDefault() {
         List<Loan> loans = retrieveAllLoans();
@@ -525,72 +459,33 @@ public boolean isPaymentLessThanFortyPercentOfIncome(Loan loan) {
             }
         });
     }
-//Remboursement et Virement de pret (USER-ADMIN account)
-    @Override
-    public Transaction processLoanTransactionWithSpecificLoan(Long senderAccountId, Long receiverAccountId, Transaction paymentRequest, Long loanId) throws StripeException {
 
-        Loan loan = loanRepository.findById(loanId).orElse(null);
-
-        Transaction processedTransaction = iAccountService.processTransactionAndAdjustBalance(senderAccountId,receiverAccountId,paymentRequest);
-
-        if (processedTransaction.getStatus() == TranStatus.COMPLETED) {
-            switch (processedTransaction.getType()) {
-                case LOAN_REPAYMENT:
-                    if (loan.getAccount().getIdAccount().equals(senderAccountId) && ((loan.getLoanStatus() == LoanStatus.InProgress || loan.getLoanStatus() == LoanStatus.Default))) {
-                        // Réduction du solde restant du prêt de l'expéditeur
-                        loan.setRemainingBalance(loan.getRemainingBalance() - paymentRequest.getAmount());
-                        if (loan.getRemainingBalance() <= 0) {
-                            loan.setLoanStatus(LoanStatus.Repaid);
-                        }
-                        loanRepository.save(loan);
-                    }
-                    break;
-
-                case LOAN_DISBURSEMENT:
-                    if (loan.getAccount().getIdAccount().equals(receiverAccountId) && loan.getLoanStatus() == LoanStatus.Approved) {
-                        // Changement du statut du prêt du destinataire de APPROUVÉ à EN COURS
-                        loan.setLoanStatus(LoanStatus.InProgress);
-                        loanRepository.save(loan);
-                    }
-                    break;
-
-
-            }
+    //X-LOAN NOTIFICATIONS
+    @Scheduled(cron = "* 12 * * * ?") // Executed every day at noon
+    public void sendPreDueDateNotifications() {
+        List<Loan> loans = loanRepository.findAllByLoanStatusAndNextPaymentDueDateIsBefore(LoanStatus.InProgress, LocalDate.now().plusWeeks(1));
+        for (Loan loan : loans) {
+            sendPreDueDateNotification(loan.getIdLoan());
         }
+    }
+    @Override
+    public void sendPreDueDateNotification(Long idLoan) {
+        Loan loan = loanRepository.findById(idLoan).orElse(null);
+        String formattedDate = formatDate(loan.getNextPaymentDueDate());
+        String message = "Reminder: Your next loan payment of $" + loan.getPayment() + " is due on " + formattedDate + ". Please ensure sufficient funds are available.";
+        String userPhoneNumber = loan.getAccount().getProfile().getUser().getPhoneNum();
+        String twilioPhoneNumber = "+14433992522"; // Replace with your Twilio number
+        try {
+            Message.creator(
+                    new PhoneNumber(userPhoneNumber),
+                    new PhoneNumber(twilioPhoneNumber),
+                    message
+            ).create();
 
-        // Sauvegarder la transaction mise à jour dans la base de données
-        return processedTransaction;
+            System.out.println("Message envoyé avec succès. ");
+        } catch (Exception e) {
+            System.err.println("Erreur lors de l'envoi du message: " + e.getMessage());
+        }
     }
 
-
-    //NOTIFICATIONS
-/*
-    @Scheduled(cron = "0 0 12 * * ?") // Executes every day at noon
-    public void sendPaymentReminderNotifications() {
-        List<Loan> loans = retrieveAllLoans(); // Assuming this method fetches all loans
-        LocalDate today = LocalDate.now();
-        loans.forEach(loan -> {
-            if (loan.getNextPaymentDueDate() != null &&
-                    ChronoUnit.DAYS.between(today, loan.getNextPaymentDueDate()) == 7 &&
-                    loan.getLoanStatus() == LoanStatus.InProgress) {
-
-                // Prepare the notification message
-                Map<String, String> notificationMessage = new HashMap<>();
-                notificationMessage.put("message", "Your next loan payment is due on " + loan.getNextPaymentDueDate() +
-                        ". The amount to be paid is " + String.format("%.2f", loan.getPayment()) + ".");
-
-                // Assuming the user's username is a unique identifier for WebSocket subscriptions
-                String username = loan.getAccount().getProfile().getUser().getLastName();
-
-                // Send the notification message to the user-specific topic
-                messagingTemplate.convertAndSendToUser(username, "/queue/notifications", notificationMessage);
-            }
-        });
-    }*/
-
 }
-
-
-
-
-

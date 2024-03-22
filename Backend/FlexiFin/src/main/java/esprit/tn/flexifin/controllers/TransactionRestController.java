@@ -48,19 +48,5 @@ public class TransactionRestController {
         }
 
     }
-    @PostMapping("/processPayment/{sendId}/{receivId}")
-    public ResponseEntity<String> processPayments(@RequestBody Transaction paymentRequest, @PathVariable("sendId") Long senderAccountId, @PathVariable("receivId") Long receiverAccountId) {
-        try {
-            Transaction transaction = iTransactionService.processPayments(paymentRequest,senderAccountId,receiverAccountId);
 
-            // Return a success response to the client
-            return ResponseEntity.ok().body("Payment successful");
-        } catch (StripeException e) {
-            e.printStackTrace();
-
-            // Return an error response to the client
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Payment failed: " + e.getMessage());
-        }
-    }
 }

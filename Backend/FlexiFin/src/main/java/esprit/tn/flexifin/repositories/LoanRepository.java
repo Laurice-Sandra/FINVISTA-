@@ -23,6 +23,8 @@ public interface LoanRepository extends JpaRepository<Loan, Long> {
     // Filtrer les prêts par type de prêt
     List<Loan> findByLoantype(LoanType loantype);
 
+    List<Loan> findAllByLoanStatusAndNextPaymentDueDateIsBefore(LoanStatus loanStatus, LocalDate localDate);
+
     @Query("SELECT COUNT(l) FROM Loan l WHERE l.loanStatus = 'InProgress' AND l.account.profile.idProfile = :profileId")
     Integer getTotalLoansByProfileId(@Param("profileId") Long profileId);
 

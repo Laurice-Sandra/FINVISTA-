@@ -6,6 +6,7 @@ import esprit.tn.flexifin.repositories.LoanRepository;
 import esprit.tn.flexifin.repositories.ProfileRepository;
 import esprit.tn.flexifin.repositories.UserRepository;
 import esprit.tn.flexifin.serviceInterfaces.IProfileService;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -70,7 +71,19 @@ public class ProfileServiceImp implements IProfileService {
 
         return BASE_SCORE + loanHistoryScore + incomeScore  ;
     }
+    @Override
+    public void updateProfileScores(Long profileId) {
+        Profile profile = profileRepository.findById(profileId)
+                .orElseThrow(() -> new EntityNotFoundException("Profile not found with ID: " + profileId));
 
+        float hist = calculateLoanHistory(profileId);
+        float score = calculateProfileScore(profileId);
+
+        profile.setLoan_history((int) hist);
+        profile.setScore((int) score);
+
+        profileRepository.save(profile);
+    }
 
 
 

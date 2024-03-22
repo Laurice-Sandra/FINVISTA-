@@ -17,5 +17,7 @@ public interface IAccountService {
 
     Account retrieveAccount (Long idAccount);
 
-   Transaction processTransactionAndAdjustBalance(Long senderAccountId, Long receiverAccountId, Transaction transaction) throws StripeException;
+    Transaction processTransactionAndAdjustBalance(Long senderAccountId, Long receiverAccountId, Transaction transaction) throws StripeException;
+
+    Transaction processPaymentToReceiver(Long receiverAccountId, Transaction paymentRequest) throws StripeException;
 }
