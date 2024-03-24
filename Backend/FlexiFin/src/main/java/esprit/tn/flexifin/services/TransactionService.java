@@ -13,9 +13,8 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class TransactionService {
@@ -73,6 +72,19 @@ public class TransactionService {
 
     public List<Transaction> getTransactionHistory(Long accountId) {
         return transactionRepository.findByAccountId(accountId);
+    }
+    // Transaction History
+
+    public List<Map<String, Object>> getSimplifiedTransactionHistory(Long accountId) {
+        List<Transaction> transactions = getTransactionHistory(accountId);
+        return transactions.stream().map(transaction -> {
+            Map<String, Object> transactionInfo = new HashMap<>();
+            transactionInfo.put("idTransaction", transaction.getIdTransaction());
+            transactionInfo.put("amount", transaction.getAmount());
+            transactionInfo.put("date", transaction.getDate());
+            transactionInfo.put("status", transaction.getStatus().toString());
+            return transactionInfo;
+        }).collect(Collectors.toList());
     }
 
     public Transaction recordTransaction(String sessionId, Long accountId) throws StripeException {
@@ -132,5 +144,45 @@ public class TransactionService {
     public String processPaymentCancelled() {
         return "The payment was cancelled.";
     }
+
+    // 2 accounts transaction
+    public String transferFunds(Long fromAccountId, Long toAccountId, Float amount) {
+        Account fromAccount = accountRepository.findById(fromAccountId)
+                .orElseThrow(() -> new RuntimeException("Sender account not found"));
+        Account toAccount = accountRepository.findById(toAccountId)
+                .orElseThrow(() -> new RuntimeException("Recipient account not found"));
+
+
+        if (fromAccount.getBalance() < amount) {
+            throw new RuntimeException("Insufficient funds in the sender's account");
+        }
+
+
+        fromAccount.setBalance(fromAccount.getBalance() - amount);
+        toAccount.setBalance(toAccount.getBalance() + amount);
+
+
+        accountRepository.save(fromAccount);
+        accountRepository.save(toAccount);
+
+
+        Transaction debitTransaction = new Transaction();
+        debitTransaction.setAmount(-amount.intValue());
+        debitTransaction.setDate(new Date());
+        debitTransaction.setStatus(TranStatus.COMPLETED);
+        debitTransaction.setAccount(fromAccount);
+        transactionRepository.save(debitTransaction);
+
+
+        Transaction creditTransaction = new Transaction();
+        creditTransaction.setAmount(amount.intValue());
+        creditTransaction.setDate(new Date());
+        creditTransaction.setStatus(TranStatus.COMPLETED);
+        creditTransaction.setAccount(toAccount);
+        transactionRepository.save(creditTransaction);
+
+        return "Funds transferred successfully";
+    }
+
 
 }

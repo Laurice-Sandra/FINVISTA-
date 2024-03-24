@@ -32,7 +32,7 @@ public class TransactionController {
 
     TransactionService transactionService;
 
-     JavaMailSender mailSender;
+    JavaMailSender mailSender;
 
 
     //CRUD
@@ -101,15 +101,7 @@ public class TransactionController {
     // TRANSACTIONS HISTORY
     @GetMapping("/history/{accountId}")
     public ResponseEntity<List<Map<String, Object>>> getTransactionHistory(@PathVariable Long accountId) {
-        List<Transaction> history = transactionService.getTransactionHistory(accountId);
-        List<Map<String, Object>> simplifiedHistory = history.stream().map(transaction -> {
-            Map<String, Object> transactionInfo = new HashMap<>();
-            transactionInfo.put("idTransaction", transaction.getIdTransaction());
-            transactionInfo.put("amount", transaction.getAmount());
-            transactionInfo.put("date", transaction.getDate());
-            transactionInfo.put("status", transaction.getStatus());
-            return transactionInfo;
-        }).collect(Collectors.toList());
+        List<Map<String, Object>> simplifiedHistory = transactionService.getSimplifiedTransactionHistory(accountId);
         return ResponseEntity.ok(simplifiedHistory);
     }
 
@@ -144,5 +136,20 @@ public class TransactionController {
         String message = transactionService.processPaymentCancelled();
         return ResponseEntity.ok(message);
     }
+    @PostMapping("/transfer")
+    public ResponseEntity<String> transferFunds(@RequestParam Long fromAccountId,
+                                                @RequestParam Long toAccountId,
+                                                @RequestParam Float amount) {
+        try {
+            String message = transactionService.transferFunds(fromAccountId, toAccountId, amount);
+            return ResponseEntity.ok(message);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+
+    }
 }
+
+
+
 
