@@ -8,11 +8,20 @@ import esprit.tn.flexifin.entities.TranStatus;
 import esprit.tn.flexifin.entities.Transaction;
 import esprit.tn.flexifin.repositories.AccountRepository;
 import esprit.tn.flexifin.repositories.TransactionRepository;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -184,5 +193,63 @@ public class TransactionService {
         return "Funds transferred successfully";
     }
 
+    //Excel
+    public ByteArrayInputStream generateFlexibleReportExcel(List<Long> accountIds, List<Integer> years, List<Integer> months) throws IOException {
 
+        if (years == null) years = new ArrayList<>();
+        if (months == null) months = new ArrayList<>();
+
+
+        LocalDate startDate;
+        LocalDate endDate;
+        if (!years.isEmpty() && !months.isEmpty()) {
+            startDate = LocalDate.of(Collections.min(years), Collections.min(months), 1);
+            endDate = LocalDate.of(Collections.max(years), Collections.max(months), startDate.withMonth(Collections.max(months)).lengthOfMonth());
+        } else {
+            startDate = LocalDate.of(1900, 1, 1);
+            endDate = LocalDate.now();
+        }
+
+        List<Transaction> transactions = transactionRepository.findByAccountIdsAndDateRange(
+                accountIds.isEmpty() ? null : accountIds, java.sql.Date.valueOf(startDate), java.sql.Date.valueOf(endDate));
+
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("Transactions Report");
+            Row headerRow = sheet.createRow(0);
+            String[] columns = {"Account ID", "Year", "Month", "Date", "Amount", "Status"};
+
+
+            for (int i = 0; i < columns.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(columns[i]);
+            }
+
+
+            int rowNum = 1;
+            for (Transaction transaction : transactions) {
+                Row row = sheet.createRow(rowNum++);
+
+                java.util.Date date = transaction.getDate();
+
+                Calendar cal = Calendar.getInstance();
+                cal.setTime(date);
+                LocalDate transactionDate = LocalDate.of(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH));
+
+                row.createCell(0).setCellValue(transaction.getAccount().getIdAccount());
+                row.createCell(1).setCellValue(transactionDate.getYear());
+                row.createCell(2).setCellValue(transactionDate.getMonthValue());
+                row.createCell(3).setCellValue(date.toString());
+                row.createCell(4).setCellValue(transaction.getAmount());
+                row.createCell(5).setCellValue(transaction.getStatus().toString());
+            }
+
+
+            for (int i = 0; i < columns.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            workbook.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+        }
+    }
 }
