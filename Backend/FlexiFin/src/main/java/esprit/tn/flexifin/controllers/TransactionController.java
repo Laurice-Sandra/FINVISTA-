@@ -1,15 +1,21 @@
 package esprit.tn.flexifin.controllers;
 
+import com.stripe.exception.StripeException;
 import esprit.tn.flexifin.entities.Transaction;
 import esprit.tn.flexifin.services.TransactionService;
 import lombok.AllArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.http.ResponseEntity;
+
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+
 import esprit.tn.flexifin.entities.TranStatus;
+
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 
 import java.util.Date;
@@ -25,6 +31,9 @@ public class TransactionController {
 
 
     TransactionService transactionService;
+
+     JavaMailSender mailSender;
+
 
     //CRUD
     @PostMapping("/")
@@ -101,8 +110,39 @@ public class TransactionController {
             transactionInfo.put("status", transaction.getStatus());
             return transactionInfo;
         }).collect(Collectors.toList());
-
         return ResponseEntity.ok(simplifiedHistory);
+    }
+
+    //stripe
+    @PostMapping("/create-payment-session")
+    public ResponseEntity<String> createPaymentSession(@RequestParam Long accountId) {
+        try {
+            String sessionUrl = transactionService.createStripeSession(accountId);
+            return ResponseEntity.ok(sessionUrl);
+        } catch (StripeException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to create Stripe session: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/payment-success")
+    public ResponseEntity<String> paymentSuccess(@RequestParam("session_id") String sessionId,
+                                                 @RequestParam("account_id") Long accountId) {
+        try {
+            String message = transactionService.processPaymentSuccess(sessionId, accountId);
+            return ResponseEntity.ok(message);
+        } catch (StripeException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error during the retrieval of the payment session: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Error while recording the transaction or sending the email: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/payment-cancelled")
+    public ResponseEntity<String> paymentCancelled() {
+        String message = transactionService.processPaymentCancelled();
+        return ResponseEntity.ok(message);
     }
 }
 

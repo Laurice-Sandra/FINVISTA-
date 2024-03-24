@@ -1,5 +1,6 @@
 package esprit.tn.flexifin.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.persistence.Entity;
 import lombok.AllArgsConstructor;
@@ -23,6 +24,7 @@ public class Transaction {
     private TranStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JsonIgnore
     private Account account;
 
     public Long getIdTransaction() { return idTransaction; }
