@@ -137,7 +137,7 @@ public class TransactionService {
 
     public String processPaymentSuccess(String sessionId, Long accountId) throws StripeException {
         Session session = Session.retrieve(sessionId);
-        String customerEmail = "khalil.nacef.kn@gmail.com"; // For testing purpose
+        String customerEmail = "khalil.nacef.kn@gmail.com";
 
         SimpleMailMessage email = new SimpleMailMessage();
         email.setTo(customerEmail);
@@ -146,7 +146,7 @@ public class TransactionService {
         email.setText("Your payment has been successfully processed. Thank you for your purchase.");
         mailSender.send(email);
 
-        recordTransaction(sessionId, accountId); // This method already exists in your service
+        recordTransaction(sessionId, accountId);
         return "The payment was successfully processed and the transaction recorded.";
     }
 
@@ -199,7 +199,6 @@ public class TransactionService {
         if (years == null) years = new ArrayList<>();
         if (months == null) months = new ArrayList<>();
 
-
         LocalDate startDate;
         LocalDate endDate;
         if (!years.isEmpty() && !months.isEmpty()) {
@@ -211,38 +210,37 @@ public class TransactionService {
         }
 
         List<Transaction> transactions = transactionRepository.findByAccountIdsAndDateRange(
-                accountIds.isEmpty() ? null : accountIds, java.sql.Date.valueOf(startDate), java.sql.Date.valueOf(endDate));
+                (accountIds == null || accountIds.isEmpty()) ? null : accountIds, java.sql.Date.valueOf(startDate), java.sql.Date.valueOf(endDate));
 
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("Transactions Report");
             Row headerRow = sheet.createRow(0);
             String[] columns = {"Account ID", "Year", "Month", "Date", "Amount", "Status"};
 
-
             for (int i = 0; i < columns.length; i++) {
                 Cell cell = headerRow.createCell(i);
                 cell.setCellValue(columns[i]);
             }
-
 
             int rowNum = 1;
             for (Transaction transaction : transactions) {
                 Row row = sheet.createRow(rowNum++);
 
                 java.util.Date date = transaction.getDate();
-
                 Calendar cal = Calendar.getInstance();
                 cal.setTime(date);
                 LocalDate transactionDate = LocalDate.of(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH));
 
-                row.createCell(0).setCellValue(transaction.getAccount().getIdAccount());
+
+                String accountId = (transaction.getAccount() != null) ? transaction.getAccount().getIdAccount().toString() : "No Account";
+
+                row.createCell(0).setCellValue(accountId);
                 row.createCell(1).setCellValue(transactionDate.getYear());
                 row.createCell(2).setCellValue(transactionDate.getMonthValue());
                 row.createCell(3).setCellValue(date.toString());
                 row.createCell(4).setCellValue(transaction.getAmount());
                 row.createCell(5).setCellValue(transaction.getStatus().toString());
             }
-
 
             for (int i = 0; i < columns.length; i++) {
                 sheet.autoSizeColumn(i);
