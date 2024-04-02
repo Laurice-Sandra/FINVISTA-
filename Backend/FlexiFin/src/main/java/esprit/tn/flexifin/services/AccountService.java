@@ -3,11 +3,12 @@ package esprit.tn.flexifin.services;
 import esprit.tn.flexifin.entities.Account;
 import esprit.tn.flexifin.repositories.AccountRepository;
 import lombok.AllArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
 
 import java.util.List;
 import java.util.Optional;
-
 @AllArgsConstructor
 @Service
 public class AccountService {

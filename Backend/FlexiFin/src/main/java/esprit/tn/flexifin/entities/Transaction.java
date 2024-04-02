@@ -2,6 +2,7 @@ package esprit.tn.flexifin.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import jakarta.persistence.Entity;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -26,43 +27,18 @@ public class Transaction {
     @JsonIgnore
     private Account account;
 
-    public Long getIdTransaction() {
-        return idTransaction;
-    }
+    public Long getIdTransaction() { return idTransaction; }
+    public void setIdTransaction(Long idTransaction) { this.idTransaction = idTransaction; }
 
-    public void setIdTransaction(Long idTransaction) {
-        this.idTransaction = idTransaction;
-    }
+    public Integer getAmount() { return amount; }
+    public void setAmount(Integer amount) { this.amount = amount; }
 
-    public Integer getAmount() {
-        return amount;
-    }
+    public Date getDate() { return date; }
+    public void setDate(Date date) { this.date = date; }
 
-    public void setAmount(Integer amount) {
-        this.amount = amount;
-    }
+    public TranStatus getStatus() { return status; }
+    public void setStatus(TranStatus status) { this.status = status; }
 
-    public Date getDate() {
-        return date;
-    }
-
-    public void setDate(Date date) {
-        this.date = date;
-    }
-
-    public TranStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(TranStatus status) {
-        this.status = status;
-    }
-
-    public Account getAccount() {
-        return account;
-    }
-
-    public void setAccount(Account account) {
-        this.account = account;
-    }
+    public Account getAccount() { return account; }
+    public void setAccount(Account account) { this.account = account; }
 }
