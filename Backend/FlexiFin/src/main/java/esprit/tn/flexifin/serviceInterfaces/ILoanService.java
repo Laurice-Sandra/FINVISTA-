@@ -41,7 +41,9 @@ public interface ILoanService {
 
     public double calculateLoanCapacity(double monthlyIncome, double monthlyDebtPayments, double monthlyExpenses);
 
-    List<String[]> simulateLoan(Loan loan);
+
+    List<String[]> simulateLoanCombined(Loan loan);
+
     String createLoanSimulationPdf(Loan loan) throws DocumentException, FileNotFoundException;
 
     void sendEmailWithFreemarkerTemplate(String to, String subject, Map<String, Object> templateModel, String attachmentPath, String templateName) throws MessagingException, IOException, TemplateException;

@@ -83,13 +83,12 @@ public class LoanRestController {
     public String createLoanSimulationPdf(@RequestBody Loan loan) throws DocumentException, FileNotFoundException {
         return iLoanService.createLoanSimulationPdf(loan);
     }
-
-
-
-    @PutMapping("/simulateLoan")
-    public List<String[]> simulateLoan(@RequestBody Loan loan) {
-        return iLoanService.simulateLoan(loan);
+    @PutMapping("/simulateLoanCombined")
+    public List<String[]> simulateLoanCombined(@RequestBody Loan loan) {
+        return iLoanService.simulateLoanCombined(loan);
     }
+
+
     @PostMapping("/updateTmm/{tmm}")
     public String updateTmm(@PathVariable("tmm") double newTmm) {
         iLoanService.updateTmm(newTmm);

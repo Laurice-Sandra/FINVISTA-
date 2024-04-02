@@ -129,24 +129,48 @@ public class LoanServiceImp implements ILoanService {
     }
 
     @Override
-    public List<String[]> simulateLoan(Loan loan) {
+    public List<String[]> simulateLoanCombined(Loan loan) {
         double interestRate = loan.getInterestRate();
         RepaymentMethod repaymentMethod = loan.getRepaymentMethod();
         int totalPeriods = repaymentMethod == RepaymentMethod.MENSUALITY ? loan.getDuration() * 12 : loan.getDuration();
         double periodicInterestRate = repaymentMethod == RepaymentMethod.MENSUALITY ? interestRate / 12 : interestRate;
-        double payment = calculatePayment(loan.getAmmountRequest(), periodicInterestRate, totalPeriods);
+
+        double constantPayment = loan.getLoantype() == LoanType.PERSONAL ? calculatePayment(loan.getAmmountRequest(), periodicInterestRate, totalPeriods) : 0;
+        double constantAmortization = loan.getLoantype() == LoanType.AGRICULTURE ? loan.getAmmountRequest() / totalPeriods : 0;
 
         List<String[]> simulationResults = new ArrayList<>();
         String periodLabel = repaymentMethod == RepaymentMethod.MENSUALITY ? "Month" : "Year";
         simulationResults.add(new String[]{periodLabel, "Remaining Balance", "Amortization", "Interest", "Payment"});
 
-        float remainingBalance = loan.getAmmountRequest();
-        float totalLoanCost = 0;
+        double remainingBalance = loan.getAmmountRequest();
+        double totalLoanCost = 0;
+        double firstPayment = 0;
+
 
         for (int period = 1; period <= totalPeriods; period++) {
             double interestForPeriod = remainingBalance * periodicInterestRate;
-            float amortization = (float) (payment - interestForPeriod);
+            double amortization = 0;
+            double payment = 0;
 
+            switch (loan.getLoantype()) {
+                case PERSONAL -> {
+                    payment = constantPayment;
+                    amortization = payment - interestForPeriod;
+                }
+                case AGRICULTURE -> {
+                    payment = constantAmortization + interestForPeriod;
+                    amortization = constantAmortization;
+                }
+                case BUSINESS -> {
+                    if (period == totalPeriods) {
+                        amortization = remainingBalance; // Entire balance is paid at the end
+                    }
+                    payment = interestForPeriod + amortization;
+                }
+            }
+            if (period == 1) {
+                firstPayment = payment; // Capture only the first payment
+            }
 
             simulationResults.add(new String[]{
                     String.format("%s %d", periodLabel, period),
@@ -155,17 +179,23 @@ public class LoanServiceImp implements ILoanService {
                     String.format("%.2f", interestForPeriod),
                     String.format("%.2f", payment)
             });
+
             remainingBalance -= amortization;
-            totalLoanCost += interestForPeriod;
+            totalLoanCost  += interestForPeriod;
         }
 
-        loan.setLoanCost(totalLoanCost);
-        loan.setRemainingBalance(loan.getAmmountRequest()+totalLoanCost);
-        loan.setPayment((float) payment);
+        // Directly adjust loan details
+
+        loan.setLoanCost(totalLoanCost );
+        loan.setRemainingBalance((float)(loan.getAmmountRequest()+totalLoanCost));
+        loan.setPayment(firstPayment);
         loanRepository.save(loan);
 
         return simulationResults;
     }
+
+
+
 
     //IV-PDF GENERATION
     @Override
@@ -189,6 +219,9 @@ public class LoanServiceImp implements ILoanService {
         Paragraph userParagraph = new Paragraph("Borrower: " + userName, userFont);
         document.add(userParagraph);
 
+        //LoanSimulation
+        List<String[]> simulationResults = simulateLoanCombined(loan);
+
         // Loan Information
         document.add(new Paragraph(" "));
         Font infoFont = new Font(Font.FontFamily.HELVETICA, 12, Font.NORMAL, BaseColor.BLACK);
@@ -200,7 +233,7 @@ public class LoanServiceImp implements ILoanService {
 
         document.add(new Paragraph(" "));
 
-        List<String[]> simulationResults = simulateLoan(loan);
+
         PdfPTable table = new PdfPTable(5); // 5 columns
 
         // Style for table headers
@@ -300,7 +333,7 @@ public class LoanServiceImp implements ILoanService {
 
         loan.setStartDate(LocalDate.now());
         loan.setNextPaymentDueDate(calculateFirstDueDate(loan.getStartDate(), loan.getRepaymentMethod()));
-        simulateLoan(loan);
+        simulateLoanCombined(loan);
         loan.setLoanStatus(LoanStatus.Approved);
         loanRepository.save(loan);
 

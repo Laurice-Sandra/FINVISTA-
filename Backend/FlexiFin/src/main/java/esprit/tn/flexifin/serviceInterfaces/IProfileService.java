@@ -7,7 +7,7 @@ import java.util.List;
 public interface IProfileService {
     List<Profile> retrieveAllProfiles();
 
-    public Profile addProfileAssignUser(Profile profile,Long idUser);
+    Profile addProfileAssignUser(Profile profile,Long idUser);
 
     Profile updateProfile (Profile profile);
 
