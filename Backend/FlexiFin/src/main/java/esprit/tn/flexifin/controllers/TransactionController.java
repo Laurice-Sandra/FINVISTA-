@@ -1,28 +1,24 @@
 package esprit.tn.flexifin.controllers;
 
 import com.stripe.exception.StripeException;
+import esprit.tn.flexifin.entities.TranStatus;
 import esprit.tn.flexifin.entities.Transaction;
 import esprit.tn.flexifin.services.TransactionService;
 import lombok.AllArgsConstructor;
-
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.HttpStatus;
 
-import esprit.tn.flexifin.entities.TranStatus;
-
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @AllArgsConstructor
 @RestController
@@ -51,7 +47,7 @@ public class TransactionController {
     @GetMapping("/{id}")
     public ResponseEntity<Transaction> getTransactionById(@PathVariable(value = "id") Long transactionId) {
         Transaction transaction = transactionService.getTransactionById(transactionId);
-        if(transaction == null) {
+        if (transaction == null) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok().body(transaction);
@@ -62,7 +58,7 @@ public class TransactionController {
     public ResponseEntity<Transaction> updateTransaction(@PathVariable(value = "id") Long transactionId,
                                                          @RequestBody Transaction transactionDetails) {
         Transaction updatedTransaction = transactionService.updateTransaction(transactionId, transactionDetails);
-        if(updatedTransaction == null) {
+        if (updatedTransaction == null) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(updatedTransaction);
@@ -70,7 +66,7 @@ public class TransactionController {
 
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTransaction(@PathVariable(value = "id") Long transactionId){
+    public ResponseEntity<Void> deleteTransaction(@PathVariable(value = "id") Long transactionId) {
         transactionService.deleteTransaction(transactionId);
         return ResponseEntity.ok().build();
     }
@@ -84,6 +80,7 @@ public class TransactionController {
         List<Transaction> transactions = transactionService.filterTransactionsByStatusAndDate(status, date);
         return new ResponseEntity<>(transactions, HttpStatus.OK);
     }
+
     // sumByStatus
     @GetMapping("/sumByStatus")
     public ResponseEntity<Integer> sumTransactionsByStatus(@RequestParam TranStatus status) {
@@ -136,6 +133,7 @@ public class TransactionController {
         String message = transactionService.processPaymentCancelled();
         return ResponseEntity.ok(message);
     }
+
     @PostMapping("/transfer")
     public ResponseEntity<String> transferFunds(@RequestParam Long fromAccountId,
                                                 @RequestParam Long toAccountId,
@@ -148,6 +146,32 @@ public class TransactionController {
         }
 
     }
+
+
+    //Excel
+
+    @GetMapping("/report/flexible")
+    public ResponseEntity<InputStreamResource> getFlexibleReport(
+            @RequestParam(required = false) List<Long> accountIds,
+            @RequestParam(required = false) List<Integer> years,
+            @RequestParam(required = false) List<Integer> months) {
+
+        try {
+            ByteArrayInputStream in = transactionService.generateFlexibleReportExcel(accountIds, years, months);
+            HttpHeaders headers = new HttpHeaders();
+            headers.add("Content-Disposition", "attachment; filename=Transactions-Report.xlsx");
+
+            return ResponseEntity
+                    .ok()
+                    .headers(headers)
+                    .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    .body(new InputStreamResource(in));
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+
 }
 
 
