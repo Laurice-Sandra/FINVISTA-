@@ -3,7 +3,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Loan Confirmation</title>
+    <title>Insurance Confirmation</title>
     <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; }
         .container { width: 80%; margin: auto; padding: 20px; }
@@ -23,7 +23,7 @@
 <body>
 <div class="container">
     <div class="header">
-        <h2>Loan Confirmation</h2>
+        <h2>Insurance Confirmation</h2>
     </div>
     <div class="content">
         <p>Hello ${name},</p>

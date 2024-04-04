@@ -16,6 +16,8 @@ import java.util.Set;
 @RequestMapping("/user")
 public class UserRestController {
     IUserService iUserService;
+
+    //crud
     @GetMapping("/GetAllUser")
     public List<User> retrieveAllUsers() {
         return iUserService.retrieveAllUsers();
@@ -33,24 +35,10 @@ public class UserRestController {
         return iUserService.retrieveUser(idUser);
     }
 
-    @PostMapping("/addInsuranceContrat")
-        @ResponseBody
-        public InsuranceContrat addContrat(@RequestBody InsuranceContrat ic){
-            return iUserService.addInsuranceContrat(ic);
-        }
+    //insurance controller
 
-        @PostMapping("/addInsurance/{cinU}/{idContrat}")
-        @ResponseBody
-        public Insurance addInsurance(@RequestBody Insurance insurance, @PathVariable("cinU") int cinU, @PathVariable("idContrat")String idContrat){
-            return iUserService.addInsurance(insurance, cinU, Long.valueOf(idContrat));
-        }
+    //insuranceContrat controller
 
-
-        @GetMapping("/getContratU/{id-User}")
-        @ResponseBody
-        public InsuranceContrat getContratByU(@PathVariable("id-User")Long idU){
-            return iUserService.getContratU(idU);
-        }
         @GetMapping("/getUserByType/{typeC}")
         public Set<User> getUserByType(@PathVariable("typeC") TypeContrat tc) {
             return iUserService.getUserByType(tc);

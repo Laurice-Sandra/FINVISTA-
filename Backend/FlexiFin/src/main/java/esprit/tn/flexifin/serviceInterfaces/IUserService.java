@@ -14,13 +14,8 @@ public interface IUserService {
     User updateUser(User user);
 
     User retrieveUser (Long idUser);
-    InsuranceContrat addInsuranceContrat (InsuranceContrat c);
 
-    Insurance addInsurance(Insurance a, int cinU, Long idContrat);
 
-    InsuranceContrat getContratU(Long idU);
-
-     Date calculateEndDate(Date startDate, TypeContrat type);
 
     float getMontantU(int cinU);
 

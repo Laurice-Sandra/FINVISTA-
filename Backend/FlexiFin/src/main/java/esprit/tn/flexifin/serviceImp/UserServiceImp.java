@@ -39,57 +39,12 @@ public class UserServiceImp implements IUserService {
 
     }
 
-    @Override
-    public InsuranceContrat addInsuranceContrat(InsuranceContrat c) {
-        // Calculate end date based on contract type
-        c.setEndDate(calculateEndDate(c.getStartDate(), c.getType()));
-
-        // Save the insurance contract
-        return insuranceContratRepository.save(c);
-    }
 
 
 
-    public Date calculateEndDate(Date startDate, TypeContrat type) {
-        LocalDate startLocalDate = startDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-
-        switch (type) {
-            case Monthly:
-                return Date.from(startLocalDate.plusMonths(1).atStartOfDay().atZone(ZoneId.systemDefault()).toInstant());
-            case Biannual:
-                return Date.from(startLocalDate.plusMonths(6).atStartOfDay().atZone(ZoneId.systemDefault()).toInstant());
-            case Annual:
-                return Date.from(startLocalDate.plusYears(1).atStartOfDay().atZone(ZoneId.systemDefault()).toInstant());
-            default:
-                return null; // Handle unknown contract types
-        }
-    }
 
 
-    @Override
-    public Insurance addInsurance(Insurance a, int cinU, Long idContrat) {
-        User user = userRepository.getByCin(cinU);
-        InsuranceContrat insuranceContrat = insuranceContratRepository.findByIdContrat(idContrat);
-        a.setUser(user);
-        a.setInsuranceContrat(insuranceContrat);
-        return insuranceRepository.save(a);
-    }
 
-    @Override
-    public InsuranceContrat getContratU(Long idU) {
-        User user = userRepository.findById(idU).orElse(null);
-
-        InsuranceContrat insuranceContrat = user.getInsurances().get(0).getInsuranceContrat();
-        LocalDate oldDate = insuranceContrat.getDateEffet();
-
-        for (int i = 1; i < user.getInsurances().size(); i++) {
-            Insurance insurance = user.getInsurances().get(i);
-            if (oldDate.isAfter(insurance.getInsuranceContrat().getDateEffet())) {
-                insuranceContrat = insurance.getInsuranceContrat();
-            }
-        }
-        return insuranceContrat;
-    }
 
     @Override
     public float getMontantU(int cinU) {

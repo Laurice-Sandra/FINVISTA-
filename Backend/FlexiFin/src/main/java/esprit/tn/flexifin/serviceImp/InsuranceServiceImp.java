@@ -1,8 +1,14 @@
 package esprit.tn.flexifin.serviceImp;
 
+import esprit.tn.flexifin.entities.Insurance;
 import esprit.tn.flexifin.entities.InsuranceContrat;
+import esprit.tn.flexifin.entities.User;
+import esprit.tn.flexifin.repositories.InsuranceContratRepository;
 import esprit.tn.flexifin.repositories.InsuranceRepository;
+import esprit.tn.flexifin.repositories.UserRepository;
+import esprit.tn.flexifin.serviceInterfaces.IAccountService;
 import esprit.tn.flexifin.serviceInterfaces.IInsuranceContratService;
+import esprit.tn.flexifin.serviceInterfaces.IInsuranceService;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
 import jakarta.mail.internet.MimeMessage;
@@ -21,32 +27,42 @@ import java.util.Map;
 
 @Service
 @AllArgsConstructor
-public class InsuranceServiceImp implements IInsuranceContratService {
+public class InsuranceServiceImp implements IInsuranceService {
    InsuranceRepository insuranceRepository;
+   InsuranceContratRepository insuranceContratRepository;
+   UserRepository userRepository;
     private final JavaMailSender emailSender;
     private FreeMarkerConfigurer freemarkerConfigurer;
 
     @Override
-    public List<InsuranceContrat> retrieveAllInsuranceContrats() {
-        return null;
+    public List<Insurance> retrieveAllInsurances() {
+        return insuranceRepository.findAll();
     }
 
     @Override
-    public InsuranceContrat addInsuranceContrat(InsuranceContrat insuranceContrat) {
-        return null;
+    public Insurance addInsurance(Insurance i) {
+        return insuranceRepository.save(i);
     }
 
     @Override
-    public InsuranceContrat updateInsuranceContrat(InsuranceContrat insuranceContrat) {
-        return null;
+    public Insurance updateInsurance(Insurance i) {
+        return insuranceRepository.save(i);
     }
 
     @Override
-    public InsuranceContrat retrieveInsuranceContrat(Long idContrat) {
-        return null;
+    public Insurance retrieveInsurance(Long idAssurance) {
+        return insuranceRepository.findById(idAssurance).orElse(null);
+    }
+    @Override
+    public Insurance addInsurance(Insurance a, int cinU, Long idContrat) {
+        User user = userRepository.getByCin(cinU);
+        InsuranceContrat insuranceContrat = insuranceContratRepository.findByIdContrat(idContrat);
+        a.setUser(user);
+        a.setInsuranceContrat(insuranceContrat);
+        return insuranceRepository.save(a);
     }
 
-   // @Override
+    // @Override
 //    public void sendEmailWithFreemarkerTemplate(String to, String subject, Map<String, Object> templateModel, String attachmentPath, String templateName) throws MessagingException, IOException, TemplateException, jakarta.mail.MessagingException, TemplateException {
 //        MimeMessage mimeMessage = emailSender.createMimeMessage();
 //        MimeMessageHelper messageHelper = new MimeMessageHelper(mimeMessage, true);
