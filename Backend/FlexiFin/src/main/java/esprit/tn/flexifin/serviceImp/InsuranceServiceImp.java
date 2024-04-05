@@ -31,8 +31,7 @@ public class InsuranceServiceImp implements IInsuranceService {
    InsuranceRepository insuranceRepository;
    InsuranceContratRepository insuranceContratRepository;
    UserRepository userRepository;
-    private final JavaMailSender emailSender;
-    private FreeMarkerConfigurer freemarkerConfigurer;
+
 
     @Override
     public List<Insurance> retrieveAllInsurances() {
@@ -62,25 +61,5 @@ public class InsuranceServiceImp implements IInsuranceService {
         return insuranceRepository.save(a);
     }
 
-    // @Override
-//    public void sendEmailWithFreemarkerTemplate(String to, String subject, Map<String, Object> templateModel, String attachmentPath, String templateName) throws MessagingException, IOException, TemplateException, jakarta.mail.MessagingException, TemplateException {
-//        MimeMessage mimeMessage = emailSender.createMimeMessage();
-//        MimeMessageHelper messageHelper = new MimeMessageHelper(mimeMessage, true);
-//        messageHelper.setFrom("noreply@finvistaflexifin.com");
-//        messageHelper.setTo(to);
-//        messageHelper.setSubject(subject);
 
-        // Configuration de FreeMarker
-//        Template freemarkerTemplate = freemarkerConfigurer.getConfiguration().getTemplate(templateName);
-//        String htmlBody = FreeMarkerTemplateUtils.processTemplateIntoString(freemarkerTemplate, templateModel);
-//        messageHelper.setText(htmlBody, true);
-
-        // Ajout de la pièce jointe si nécessaire
-//        if (attachmentPath != null && !attachmentPath.isEmpty()) {
-//            FileSystemResource file = new FileSystemResource(attachmentPath);
-//            messageHelper.addAttachment(file.getFilename(), file);
-//        }
-
-//        emailSender.send(mimeMessage);
-    //}
 }
