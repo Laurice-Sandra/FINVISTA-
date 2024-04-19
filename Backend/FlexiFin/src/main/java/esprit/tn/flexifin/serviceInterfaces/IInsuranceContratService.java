@@ -24,7 +24,7 @@ public interface IInsuranceContratService {
     InsuranceContrat retrieveInsuranceContrat (Long idContrat);
     InsuranceContrat getContratU(Long idU);
 
-    void sendEmailWithFreemarkerTemplate(String to, String subject, Map<String, Object> templateModel, String attachmentPath, String templateName) throws MessagingException, IOException, TemplateException, jakarta.mail.MessagingException;
+   // void sendEmailWithFreemarkerTemplate(String to, String subject, Map<String, Object> templateModel, String templateName) throws MessagingException, IOException, TemplateException, jakarta.mail.MessagingException;
 
 }
 

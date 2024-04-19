@@ -26,10 +26,10 @@
         <h2>Insurance Confirmation</h2>
     </div>
     <div class="content">
-        <p>Hello ${name},</p>
-        <p>We are pleased to inform you that your loan application has been approved. Attached you will find the loan contract. Please read it carefully.</p>
+        <p>Hello ,</p>
+        <p>We are pleased to inform you that your Insurance Contrat has been approved. Attached you will find the logo confirme. Please read it carefully.</p>
         <p>To finalize the process and proceed with the fund transfer, please confirm the acceptance of the contract by clicking the link below:</p>
-        <p><a href="${confirmationUrl}" class="button" target="_blank">Confirm My Loan</a></p>
+        <p><a href="" class="button" target="_blank">Confirm My Insurance</a></p>
         <p>If you have any questions or need assistance, do not hesitate to contact us.</p>
         <p>Thank you for your trust,</p>
         <p>The FinvistaFlexiFin Team</p>
