@@ -1,17 +1,25 @@
 package esprit.tn.flexifin.controllers;
 
+import com.itextpdf.text.DocumentException;
+import com.stripe.exception.StripeException;
 import esprit.tn.flexifin.entities.Loan;
 import esprit.tn.flexifin.entities.LoanStatus;
 import esprit.tn.flexifin.entities.LoanType;
+import esprit.tn.flexifin.entities.Transaction;
 import esprit.tn.flexifin.serviceInterfaces.ILoanService;
+import freemarker.template.TemplateException;
+import jakarta.mail.MessagingException;
 import lombok.AllArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.time.LocalDate;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+
 
 @RestController
 @AllArgsConstructor
@@ -31,6 +39,10 @@ public class LoanRestController {
     public Loan addLoan(@RequestBody Loan  loan) {
         return this.iLoanService.addLoan(loan);
     }
+    @PostMapping("addLoan/{idAc}")
+    public Loan addLoanAssignAccount(@RequestBody Loan loan,@PathVariable("idAc") Long idAccount) {
+        return iLoanService.addLoanAssignAccount(loan, idAccount);
+    }
 
     @GetMapping("/getLoan/{idLoan}")
     //@PreAuthorize("hasAnyAuthority('SCOPE_USER')")
@@ -38,11 +50,7 @@ public class LoanRestController {
         return this.iLoanService.retrieveLoan(id);
     }
 
-    @PutMapping("/UpdateLoan")
-    //@PreAuthorize("hasAnyAuthority('SCOPE_ADMIN')")
-    public Loan updateLoan(@RequestBody Loan loan) {
-        return this.iLoanService.updateLoan(loan);
-    }
+
 
     //FILTERS
     @GetMapping("/getLoanbystatus/{status}")
@@ -63,37 +71,67 @@ public class LoanRestController {
         return iLoanService.getLoanByUserId(idUser);
     }
 
-    //SIMULATE SERVICES
-    @PostMapping("/simulate")
-    public Map<String, Float> simulateLoan(@RequestBody Loan loan) {
-        return iLoanService.simulateLoan(loan);
-    }
-    @PostMapping("/generatepdf")
-    public void generatePdf(@RequestBody LinkedHashMap<String, Float> loanSimulation) throws IOException {
-        iLoanService.generatePdf(loanSimulation);
-    }
-@DeleteMapping("/deleteLoan/{idLoan}")
+    @DeleteMapping("/deleteLoan/{idLoan}")
     public void removeLoan(@PathVariable("idLoan") Long idLoan) {
         iLoanService.removeLoan(idLoan);
     }
-    @PostMapping("/simulate2")
-    public Map<String, Float> simulateLoan2(@RequestBody Loan loan) {
-        return iLoanService.simulateLoan2(loan);
+
+
+
+
+    @PutMapping("/generatetestpdf")
+    public String createLoanSimulationPdf(@RequestBody Loan loan) throws DocumentException, FileNotFoundException {
+        return iLoanService.createLoanSimulationPdf(loan);
     }
-    @PostMapping("/simulateAY")
-    public Map<String, Float> simulateLoanWithConstantAmortizationPerYear(@RequestBody Loan loan) {
-        return iLoanService.simulateLoanWithConstantAmortizationPerYear(loan);
+    @PutMapping("/simulateLoanCombined")
+    public List<String[]> simulateLoanCombined(@RequestBody Loan loan) {
+        return iLoanService.simulateLoanCombined(loan);
     }
-    @PostMapping("/simulateAM")
-    public Map<String, Float> simulateLoanWithConstantAmortizationPerMonth(@RequestBody Loan loan) {
-        return iLoanService.simulateLoanWithConstantAmortizationPerMonth(loan);
+
+
+    @PostMapping("/updateTmm/{tmm}")
+    public String updateTmm(@PathVariable("tmm") double newTmm) {
+        iLoanService.updateTmm(newTmm);
+        return "TMM updated successfully to " + newTmm;
     }
-    @PostMapping("/simulateIfYear")
-    public Map<String, Float> simulateLoanInFineByYear(@RequestBody Loan loan) {
-        return iLoanService.simulateLoanInFineByYear(loan);
+
+    // Endpoint temporaire pour tester la mise à jour des dates d'échéance
+    @GetMapping("/triggerUpdatePaymentDueDates")
+    public ResponseEntity<String> triggerUpdatePaymentDueDates() {
+        iLoanService.updatePaymentDueDates();
+        return ResponseEntity.ok("Payment due dates update triggered.");
     }
-    @PostMapping("/simulateIfMonth")
-    public Map<String, Float> simulateLoanInFineByMonth(@RequestBody Loan loan) {
-        return iLoanService.simulateLoanInFineByMonth(loan);
+    @GetMapping("/confirm-loan/{loanId}")
+    public ResponseEntity<String> confirmLoan(@PathVariable("loanId") Long loanId) {
+        iLoanService.confirmLoan(loanId);
+        return ResponseEntity.ok("Prêt confirmé avec succès.");
     }
+
+
+    @PutMapping("approveloanEmailFM/{id}")
+    public String approveLoanByIdWithFreemarker(@PathVariable("id") Long loanId) throws DocumentException, MessagingException, IOException, TemplateException {
+        return iLoanService.approveLoanByIdWithFreemarker(loanId);
+    }
+    @GetMapping("/pendingLoansUpdate")
+    public ResponseEntity<String> processPendingLoansUpdated() throws DocumentException, MessagingException, IOException, TemplateException {
+        iLoanService.processPendingLoansUpdated();
+        return ResponseEntity.ok("Pending loans updated with success");
+    }
+    @PostMapping("/loanTransaction/{send}/{receive}/{idL}")
+    public Transaction processLoanTransactionWithSpecificLoan(@PathVariable("send") Long senderAccountId,@PathVariable("receive") Long receiverAccountId,@RequestBody Transaction paymentRequest, @PathVariable("idL")Long loanId) throws StripeException {
+        return iLoanService.processLoanTransactionWithSpecificLoan(senderAccountId, receiverAccountId, paymentRequest, loanId);
+    }
+
+    // Endpoint pour tester l'envoi de la notification Twilio
+    @GetMapping("/send-reminder/{loanId}")
+    public ResponseEntity<String> sendLoanPaymentReminder(@PathVariable Long loanId) {
+        try {
+            iLoanService.sendPreDueDateNotification(loanId);
+            return ResponseEntity.ok("Notification sent successfully.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to send notification: " + e.getMessage());
+        }
+    }
+
+
 }

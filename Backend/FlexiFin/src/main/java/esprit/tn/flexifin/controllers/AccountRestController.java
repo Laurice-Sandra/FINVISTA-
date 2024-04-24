@@ -1,6 +1,8 @@
 package esprit.tn.flexifin.controllers;
 
+import com.stripe.exception.StripeException;
 import esprit.tn.flexifin.entities.Account;
+import esprit.tn.flexifin.entities.Transaction;
 import esprit.tn.flexifin.serviceInterfaces.IAccountService;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -29,6 +31,13 @@ public class AccountRestController {
     }
 
     IAccountService iAccountService;
+@PostMapping("addAccount/{idP}")
+    public Account addAccountForProfile(@PathVariable("idP") Long profileId, @RequestBody Account account) {
+        return iAccountService.addAccountForProfile(profileId, account);
+    }
 
-
+    @PostMapping("/accountTransaction/{sendId}/{receivId}")
+    public Transaction AdjustAccountBalanceTransaction(@PathVariable("sendId") Long senderAccountId, @PathVariable("receivId") Long receiverAccountId,@RequestBody Transaction transaction) throws StripeException {
+        return iAccountService.processTransactionAndAdjustBalance(senderAccountId, receiverAccountId, transaction);
+    }
 }

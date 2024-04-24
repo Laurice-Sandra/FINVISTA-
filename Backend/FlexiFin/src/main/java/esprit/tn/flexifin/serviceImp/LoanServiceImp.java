@@ -1,60 +1,109 @@
 package esprit.tn.flexifin.serviceImp;
 
-import esprit.tn.flexifin.entities.Loan;
-import esprit.tn.flexifin.entities.LoanStatus;
-import esprit.tn.flexifin.entities.LoanType;
-import esprit.tn.flexifin.repositories.LoanRepository;
+import com.itextpdf.text.*;
+import com.itextpdf.text.pdf.PdfPCell;
+import com.itextpdf.text.pdf.PdfPTable;
+import com.itextpdf.text.pdf.PdfWriter;
+import com.stripe.exception.StripeException;
+import com.twilio.rest.api.v2010.account.Message;
+import com.twilio.type.PhoneNumber;
+import esprit.tn.flexifin.entities.*;
+import esprit.tn.flexifin.repositories.*;
+import esprit.tn.flexifin.serviceInterfaces.IAccountService;
 import esprit.tn.flexifin.serviceInterfaces.ILoanService;
+import esprit.tn.flexifin.serviceInterfaces.IProfileService;
+import esprit.tn.flexifin.serviceInterfaces.ITransactionService;
+import freemarker.template.Template;
+import freemarker.template.TemplateException;
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.PDPageContentStream;
-import org.apache.pdfbox.pdmodel.font.PDType1Font;
-import org.jetbrains.annotations.NotNull;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.ui.freemarker.FreeMarkerTemplateUtils;
+import org.springframework.web.servlet.view.freemarker.FreeMarkerConfigurer;
 
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.List;
 
 @Service
 @AllArgsConstructor
+@EnableScheduling
 public class LoanServiceImp implements ILoanService {
     LoanRepository loanRepository;
+    AccountRepository accountRepository;
+    IProfileService iProfileService;
+    IAccountService iAccountService;
+    ITransactionService iTransactionService;
+    ProfileRepository profileRepository;
+    TransactionRepository transactionRepository;
+    AppSettingRepository appSettingRepository;
+    UserRepository userRepository;
 
-    public List<Loan> retrieveAllLoans(){
-        return loanRepository.findAll();
+    private final JavaMailSender emailSender;
+    private FreeMarkerConfigurer freemarkerConfigurer;
+
+    // I-Fixing Loan TMM
+    @Override
+    public double updateTmm(double newTmm) {
+        AppSetting appSetting = appSettingRepository.findFirstByOrderByIdAsc().orElse(new AppSetting());
+        appSetting.setTmm(newTmm);
+        appSettingRepository.save(appSetting);
+        return appSetting.getTmm();
     }
+    private double getInterestRate() {
+        return appSettingRepository.findFirstByOrderByIdAsc()
+                .map(setting -> setting.getTmm() + setting.getFixedInterestPart())
+                .orElseThrow(() -> new IllegalStateException("AppSetting is not configured."));
+    }
+    //II-CRUD AND FILTERS
 
     public Loan addLoan(Loan loan){
         return loanRepository.save(loan);
     }
+    @Override
+    public Loan addLoanAssignAccount(Loan loan, Long idAccount) {
+        Account account = accountRepository.findById(idAccount)
+                .orElseThrow(() -> new EntityNotFoundException("Account not found with ID: " + idAccount));
 
-    public  Loan updateLoan (Loan loan){
-        Optional<Loan> contratOptional = loanRepository.findById(loan.getIdLoan());
-        if (contratOptional.isPresent()) {
-            Loan loanToUpdate = contratOptional.orElse(null);
-            loanToUpdate.setLoanStatus(LoanStatus.InProgress);
-            return loanRepository.save(loanToUpdate);
+        loan.setLoanStatus(LoanStatus.Pending);
+        loan.setInterestRate(getInterestRate());
+        loan.setAccount(account);
+
+        if (account.getProfile() != null) {
+            iProfileService.updateProfileScores(account.getProfile().getIdProfile());
+
         }
-
         return loanRepository.save(loan);
     }
-
+    @Override
+    public List<Loan> retrieveAllLoans(){
+        return loanRepository.findAll();
+    }
+    @Override
     public Loan retrieveLoan (Long idLoan){
         return loanRepository.findById(idLoan).orElse(null);
     }
-
+    @Override
     public void removeLoan(Long idLoan){
 
         loanRepository.deleteById(idLoan);
     }
-
-    //SEMI DEFINE SERVICES (FILTERS)
     @Override
-   public List<Loan> getLoanByStatus(LoanStatus status){
-return loanRepository.findByLoanStatus(status);
-   }
+    public List<Loan> getLoanByStatus(LoanStatus status){
+        return loanRepository.findByLoanStatus(status);
+    }
     @Override
     public List<Loan> getLoanByStartDate(LocalDate date){
         return loanRepository.findByStartDate(date);
@@ -68,229 +117,408 @@ return loanRepository.findByLoanStatus(status);
         return loanRepository.findByUserId(idUser);
     }
 
-
-
-   //LOAN APROVAL
-
-    /*public boolean approveLoan(Long userId) {
-        Profile profile = profileRepository.findByUserId(userId);
-        // Vérifiez les informations nécessaires dans le profil
-        if (profile != null && *//* Vérification des informations *//*) {
-            // Approuver le prêt
-            return true;
-        }
-        return false;
-    }*/
-
-
-
-
-
-
-    //SERVICE
-    //Simulation de pret
-
-    /*public String generateTemporaryId() {
-        // Génère un ID unique temporaire
-        return UUID.randomUUID().toString();
-    }*/
-
-    /*public Map<String, Float> simulateLoan(float amount, int duration, float interestRate) {
-        float monthlyPayment = calculateMonthlyPayment(amount, duration, interestRate);
-        float totalCost = monthlyPayment * duration;
-
-        Map<String, Float> result = new HashMap<>();
-        result.put("monthlyPayment", monthlyPayment);
-        result.put("totalCost", totalCost);
-
-        return result;
-
-    }*/
-
-    /*private float calculateMonthlyPayment(float amount, int duration, float interestRate) {
-        float monthlyInterestRate = interestRate / 12 / 100;
-        return (amount * monthlyInterestRate) / (1 - (float)Math.pow(1 + monthlyInterestRate, -duration));
-    }*/
-
+    //III-LOAN SIMULATION
+    @Override
     public double calculateLoanCapacity(double monthlyIncome, double monthlyDebtPayments, double monthlyExpenses) {
         return monthlyIncome - (monthlyDebtPayments + monthlyExpenses);
     }
 
-
-public Map<String, Float> simulateLoan(Loan loan) {
-    Map<String, Float> loanSimulation = new LinkedHashMap<>();
-    float annualInterestRate = loan.getInterestRate();
-    double annualPayment = (loan.getAmmountRequest() * annualInterestRate) / (1 - Math.pow(1 + annualInterestRate, -loan.getDuration()));
-    float remainingBalance = loan.getAmmountRequest();
-    float totalLoanCost = 0;
-
-    for (int year = 1; year <= loan.getDuration(); year++) {
-        float interestForYear = annualInterestRate * remainingBalance;
-        float yearlyAmortization = (float) (annualPayment - interestForYear);
-
-        loanSimulation.put("Year " + year + " - Number", (float) year);
-        loanSimulation.put("Year " + year + " - Remaining Balance", remainingBalance);
-        loanSimulation.put("Year " + year + " - Amortization", yearlyAmortization);
-        loanSimulation.put("Year " + year + " - Interest", interestForYear);
-        loanSimulation.put("Year " + year + " - Annuity", (float) annualPayment);
-
-
-        totalLoanCost += interestForYear;
-
-        if (year < loan.getDuration()) {
-            remainingBalance -= yearlyAmortization;
-        }
-    }
-
-
-
-
-    loanSimulation.put("Total Loan Cost", totalLoanCost);
-
-    return loanSimulation;
-}
-
     @Override
-    public Map<String, Float> simulateLoan2(@NotNull Loan loan) {
-        Map<String, Float> loanSimulation = new LinkedHashMap<>();
-        float annualInterestRate = loan.getInterestRate();
-        float monthlyInterestRate = annualInterestRate / 12;
-        int totalMonths = loan.getDuration() * 12;
-        double monthlyPayment = (loan.getAmmountRequest() * monthlyInterestRate) / (1 - Math.pow(1 + monthlyInterestRate, -totalMonths));
-        float remainingBalance = loan.getAmmountRequest();
-        float totalLoanCost = 0;
-
-        for (int month = 1; month <= totalMonths; month++) {
-            float interestForMonth = monthlyInterestRate * remainingBalance;
-            float monthlyAmortization = (float) (monthlyPayment - interestForMonth);
-
-            loanSimulation.put("Month " + month + " - Remaining Balance", remainingBalance);
-            loanSimulation.put("Month " + month + " - Amortization", monthlyAmortization);
-            loanSimulation.put("Month " + month + " - Interest", interestForMonth);
-            loanSimulation.put("Month " + month + " - Monthly Payment", (float) monthlyPayment);
-
-            remainingBalance -= monthlyAmortization;
-            totalLoanCost += interestForMonth;
-        }
-
-        loanSimulation.put("Total Loan Cost", totalLoanCost);
-
-        return loanSimulation;
+    public double calculatePayment(float amount, double interestRate, int totalPeriods) {
+        return (amount * interestRate) / (1 - Math.pow(1 + interestRate, -totalPeriods));
     }
 
     @Override
-    public Map<String, Float> simulateLoanWithConstantAmortizationPerYear(@NotNull Loan loan) {
-        Map<String, Float> loanSimulation = new LinkedHashMap<>();
-        float annualInterestRate = loan.getInterestRate();
-        int totalYears = loan.getDuration();
-        float totalLoanCost = 0;
+    public List<String[]> simulateLoanCombined(Loan loan) {
+        double interestRate = loan.getInterestRate();
+        RepaymentMethod repaymentMethod = loan.getRepaymentMethod();
+        int totalPeriods = repaymentMethod == RepaymentMethod.MENSUALITY ? loan.getDuration() * 12 : loan.getDuration();
+        double periodicInterestRate = repaymentMethod == RepaymentMethod.MENSUALITY ? interestRate / 12 : interestRate;
 
-        float yearlyAmortization = loan.getAmmountRequest() / totalYears;
-        float remainingBalance = loan.getAmmountRequest();
+        double constantPayment = loan.getLoantype() == LoanType.PERSONAL ? calculatePayment(loan.getAmmountRequest(), periodicInterestRate, totalPeriods) : 0;
+        double constantAmortization = loan.getLoantype() == LoanType.AGRICULTURE ? loan.getAmmountRequest() / totalPeriods : 0;
 
-        for (int year = 1; year <= totalYears; year++) {
-            float interestForYear = annualInterestRate * remainingBalance;
-            float annualPayment = yearlyAmortization + interestForYear;
+        List<String[]> simulationResults = new ArrayList<>();
+        String periodLabel = repaymentMethod == RepaymentMethod.MENSUALITY ? "Month" : "Year";
+        simulationResults.add(new String[]{periodLabel, "Remaining Balance", "Amortization", "Interest", "Payment"});
 
-            loanSimulation.put("Year " + year + " - Remaining Balance", remainingBalance);
-            loanSimulation.put("Year " + year + " - Amortization", yearlyAmortization);
-            loanSimulation.put("Year " + year + " - Interest", interestForYear);
-            loanSimulation.put("Year " + year + " - Annual Payment", annualPayment);
+        double remainingBalance = loan.getAmmountRequest();
+        double totalLoanCost = 0;
+        double firstPayment = 0;
 
-            totalLoanCost += interestForYear;
-            remainingBalance -= yearlyAmortization;
+
+        for (int period = 1; period <= totalPeriods; period++) {
+            double interestForPeriod = remainingBalance * periodicInterestRate;
+            double amortization = 0;
+            double payment = 0;
+
+            switch (loan.getLoantype()) {
+                case PERSONAL -> {
+                    payment = constantPayment;
+                    amortization = payment - interestForPeriod;
+                }
+                case AGRICULTURE -> {
+                    payment = constantAmortization + interestForPeriod;
+                    amortization = constantAmortization;
+                }
+                case BUSINESS -> {
+                    if (period == totalPeriods) {
+                        amortization = remainingBalance; // Entire balance is paid at the end
+                    }
+                    payment = interestForPeriod + amortization;
+                }
+            }
+            if (period == 1) {
+                firstPayment = payment; // Capture only the first payment
+            }
+
+            simulationResults.add(new String[]{
+                    String.format("%s %d", periodLabel, period),
+                    String.format("%.2f", remainingBalance),
+                    String.format("%.2f", amortization),
+                    String.format("%.2f", interestForPeriod),
+                    String.format("%.2f", payment)
+            });
+
+            remainingBalance -= amortization;
+            totalLoanCost  += interestForPeriod;
         }
 
-        loanSimulation.put("Total Loan Cost", totalLoanCost);
+        // Directly adjust loan details
 
-        return loanSimulation;
+        loan.setLoanCost(totalLoanCost );
+        loan.setRemainingBalance((float)(loan.getAmmountRequest()+totalLoanCost));
+        loan.setPayment(firstPayment);
+        loanRepository.save(loan);
+
+        return simulationResults;
     }
+
+
+
+
+    //IV-PDF GENERATION
     @Override
-    public Map<String, Float> simulateLoanWithConstantAmortizationPerMonth(Loan loan) {
-        Map<String, Float> loanSimulation = new LinkedHashMap<>();
-        float annualInterestRate = loan.getInterestRate();
-        int totalMonths = loan.getDuration() * 12;
-        float totalLoanCost = 0;
+    public String createLoanSimulationPdf(Loan loan) throws DocumentException, FileNotFoundException {
+        Document document = new Document();
+        AppSetting appSetting = appSettingRepository.findFirstByOrderByIdAsc().orElse(new AppSetting());
 
-        float monthlyAmortization = loan.getAmmountRequest() / totalMonths;
-        float remainingBalance = loan.getAmmountRequest();
+        String filePath = appSetting.getFilePath() + loan.getIdLoan() + ".pdf";
+        PdfWriter.getInstance(document, new FileOutputStream(filePath));
 
-        for (int month = 1; month <= totalMonths; month++) {
-            float monthlyInterest = (annualInterestRate / 12) * remainingBalance;
-            float monthlyPayment = monthlyAmortization + monthlyInterest;
+        document.open();
+        // Title
+        Font titleFont = new Font(Font.FontFamily.HELVETICA, 18, Font.BOLD, BaseColor.BLUE);
+        Paragraph title = new Paragraph("LOAN CONTRACT", titleFont);
+        title.setAlignment(Element.ALIGN_CENTER);
+        document.add(title);
 
-            loanSimulation.put("Month " + month + " - Remaining Balance", remainingBalance);
-            loanSimulation.put("Month " + month + " - Amortization", monthlyAmortization);
-            loanSimulation.put("Month " + month + " - Interest", monthlyInterest);
-            loanSimulation.put("Month " + month + " - Monthly Payment", monthlyPayment);
+        // User Information
+        String userName = loan.getAccount().getProfile().getUser().getFirstName() + " " + loan.getAccount().getProfile().getUser().getLastName();
+        Font userFont = new Font(Font.FontFamily.HELVETICA, 14, Font.NORMAL, BaseColor.DARK_GRAY);
+        Paragraph userParagraph = new Paragraph("Borrower: " + userName, userFont);
+        document.add(userParagraph);
 
-            totalLoanCost += monthlyInterest;
-            remainingBalance -= monthlyAmortization;
+        //LoanSimulation
+        List<String[]> simulationResults = simulateLoanCombined(loan);
+
+        // Loan Information
+        document.add(new Paragraph(" "));
+        Font infoFont = new Font(Font.FontFamily.HELVETICA, 12, Font.NORMAL, BaseColor.BLACK);
+        document.add(new Paragraph("LOAN ID: " + loan.getIdLoan(), infoFont));
+        document.add(new Paragraph("START DATE: " + formatDate(loan.getStartDate()), infoFont));
+        LocalDate endDate = loan.getStartDate().plusMonths(loan.getDuration() * 12); // Assuming duration is in years
+        document.add(new Paragraph("DATE OF CLOSURE: " + formatDate(endDate), infoFont));
+        document.add(new Paragraph("LOAN COST: $" + String.format("%.2f", loan.getLoanCost()), infoFont));
+
+        document.add(new Paragraph(" "));
+
+
+        PdfPTable table = new PdfPTable(5); // 5 columns
+
+        // Style for table headers
+        Font tableHeaderFont = new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD, BaseColor.WHITE);
+        BaseColor headerBackgroundColor = new BaseColor(0, 121, 182); // A blue color
+
+        // Add header row
+        for (String header : simulationResults.get(0)) {
+            PdfPCell cell = new PdfPCell(new Phrase(header, tableHeaderFont));
+            cell.setBackgroundColor(headerBackgroundColor);
+            table.addCell(cell);
         }
 
-        loanSimulation.put("Total Loan Cost", totalLoanCost);
+        // Add data rows
+        Font tableBodyFont = new Font(Font.FontFamily.HELVETICA, 12, Font.NORMAL, BaseColor.BLACK);
+        simulationResults.stream().skip(1).forEach(row -> {
+            for (String cell : row) {
+                table.addCell(new Phrase(cell, tableBodyFont));
+            }
+        });
 
-        return loanSimulation;
+        document.add(table);
+        document.close();
+        return filePath;
     }
+
+    private String formatDate(LocalDate date) {
+        return date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+    }
+
+    private LocalDate calculateFirstDueDate(LocalDate startDate, RepaymentMethod repaymentMethod) {
+        return repaymentMethod == RepaymentMethod.MENSUALITY ? startDate.plusMonths(1) : startDate.plusYears(1);
+    }
+
+    // V-EMAIL SENDING
     @Override
-    public Map<String, Float> simulateLoanInFineByYear(@NotNull Loan loan) {
-        Map<String, Float> loanSimulation = new LinkedHashMap<>();
-        float annualInterestRate = loan.getInterestRate();
-        float interestForYear = annualInterestRate * loan.getAmmountRequest();
-        float totalInterest = interestForYear * loan.getDuration();
-        loanSimulation.put( "  Yearly Interest", interestForYear);
-        loanSimulation.put("Total Loan", totalInterest);
-        return loanSimulation;
+    public void sendEmailWithFreemarkerTemplate(String to, String subject, Map<String, Object> templateModel, String attachmentPath, String templateName) throws MessagingException, IOException, TemplateException {
+        MimeMessage mimeMessage = emailSender.createMimeMessage();
+        MimeMessageHelper messageHelper = new MimeMessageHelper(mimeMessage, true);
+        messageHelper.setFrom("noreply@finvistaflexifin.com");
+        messageHelper.setTo(to);
+        messageHelper.setSubject(subject);
+
+        // Configuration de FreeMarker
+        Template freemarkerTemplate = freemarkerConfigurer.getConfiguration().getTemplate(templateName);
+        String htmlBody = FreeMarkerTemplateUtils.processTemplateIntoString(freemarkerTemplate, templateModel);
+        messageHelper.setText(htmlBody, true);
+
+        // Ajout de la pièce jointe si nécessaire
+        if (attachmentPath != null && !attachmentPath.isEmpty()) {
+            FileSystemResource file = new FileSystemResource(attachmentPath);
+            messageHelper.addAttachment(file.getFilename(), file);
+        }
+
+        emailSender.send(mimeMessage);
+    }
+
+    //VI-LOAN APPROVAL AND REJECTION
+
+    private String conditionforLoanApproval(Loan loan) {
+
+        double monthlyPayment = calculatePayment(loan.getAmmountRequest(), loan.getInterestRate(), loan.getDuration() * 12);
+        double monthlyIncome = loan.getAccount().getProfile().getIncome();
+        boolean isPaymentLessThanFortyPercentOfIncome=   monthlyPayment < (0.4 * monthlyIncome);
+        Profile profile = loan.getAccount().getProfile();
+        if (profile.getLoan_history() <= 0) {
+            return "You currently have an outstanding loan.";
+        } else if (!isPaymentLessThanFortyPercentOfIncome) {
+            return "The monthly payment exceeds 40% of your salary.";
+        } else if (profile.getScore() <= 500) {
+            return "Your profile score is below the required minimum.";
+        }
+        return "";
     }
 
     @Override
-    public Map<String, Float> simulateLoanInFineByMonth(@NotNull Loan loan) {
-        Map<String, Float> loanSimulation = new LinkedHashMap<>();
-        float monthlyInterestRate = loan.getInterestRate() / 12;
-        float monthlyInterest = monthlyInterestRate * loan.getAmmountRequest();
-        float totalInterest = monthlyInterest * loan.getDuration() * 12;
-        loanSimulation.put( "  Monthly Interest", monthlyInterest);
-        loanSimulation.put("Total LoanCost", totalInterest);
-        return loanSimulation;
+    public String approveLoanByIdWithFreemarker(Long loanId) throws DocumentException, MessagingException, IOException, TemplateException {
+        Optional<Loan> loanOpt = loanRepository.findById(loanId);
+
+        if (!loanOpt.isPresent()) {
+            return "Loan with ID " + loanId + " does not exist.";
+        }
+
+        Loan loan = loanOpt.orElse(null);
+        if (loan.getLoanStatus() != LoanStatus.Pending) {
+            return "Loan is not in PENDING status.";
+        }
+
+        if (loan.getAccount() == null || loan.getAccount().getProfile() == null || loan.getAccount().getProfile().getUser() == null) {
+            return "Account/Profile/User information is missing for loan ID " + loanId;
+        }
+
+        String rejectionReason = conditionforLoanApproval(loan);
+        if (!rejectionReason.isEmpty()) {
+            return rejectionReason;
+        }
+
+        loan.setStartDate(LocalDate.now());
+        loan.setNextPaymentDueDate(calculateFirstDueDate(loan.getStartDate(), loan.getRepaymentMethod()));
+        simulateLoanCombined(loan);
+        loan.setLoanStatus(LoanStatus.Approved);
+        loanRepository.save(loan);
+
+        // Chemin vers le contrat de prêt généré
+        String contractPath = createLoanSimulationPdf(loan);
+
+        // Préparation du modèle pour FreeMarker
+        Map<String, Object> templateModel = new HashMap<>();
+        User user = loan.getAccount().getProfile().getUser();
+        templateModel.put("name", user.getFirstName()); // Ensure this matches your User entity's method to get the name
+        templateModel.put("confirmationUrl", "http://yourconfirmationlink.com"); // Adjust this to your actual confirmation link
+        templateModel.put("contractPath", contractPath);
+
+        // Appel du service d'envoi d'email modifié pour utiliser FreeMarker
+        String to = user.getEmail();
+        String template ="email-template.ftl";
+        sendEmailWithFreemarkerTemplate(to, "Loan Application Update", templateModel, contractPath,template);
+
+        return "Loan with ID " + loanId + " has been approved. Contract sent to: " + to;
     }
 
-@Override
-//generation de pdf
-public void generatePdf(@NotNull LinkedHashMap<String, Float> loanSimulation) throws IOException {
-    PDDocument document = new PDDocument();
-    PDPage page = new PDPage();
-    document.addPage(page);
-    PDPageContentStream contentStream = new PDPageContentStream(document, page);
-    contentStream.setFont(PDType1Font.HELVETICA, 12);
+    //LOAN REJECTION
+    private void rejectLoanAndNotifyUser(Long loanId) throws MessagingException, IOException, TemplateException {
+        Loan loan = loanRepository.findById(loanId)
+                .orElseThrow(() -> new EntityNotFoundException("Loan not found with ID: " + loanId));
+        String reason = conditionforLoanApproval(loan);
+        loan.setLoanStatus(LoanStatus.Denied);
+        loanRepository.save(loan);
 
-    float y = page.getMediaBox().getHeight() - 20; // Position verticale initiale
-    float x = 50; // Position horizontale initiale
-    float columnWidth = 150; // Largeur des colonnes
+        Map<String, Object> templateModel = new HashMap<>();
+        User user = loan.getAccount().getProfile().getUser();
+        templateModel.put("user", user);
+        templateModel.put("name", user.getFirstName());
+        templateModel.put("reason", reason);
+        String to = user.getEmail();
 
-    contentStream.beginText();
-    contentStream.newLineAtOffset(x, y);
+        sendEmailWithFreemarkerTemplate(to, "Loan Application Update", templateModel, null, "loan-rejection.ftl");
+    }
 
-    int currentYear = 0; // Indice du year actuel
-    for (Map.Entry<String, Float> entry : loanSimulation.entrySet()) {
-        String key = entry.getKey();
-        String value = String.format("%.2f", entry.getValue());
-        if (key.startsWith("Year")) {
-            int yearIndex = Integer.parseInt(key.substring(5, key.indexOf(" -"))); // Extraire l'indice du year
-            if (yearIndex != currentYear) { // Nouvelle ligne pour chaque changement d'indice de year
-                currentYear = yearIndex;
-                contentStream.newLineAtOffset(-x, -15); // Déplacer vers la gauche pour commencer une nouvelle ligne
+    //SCHEDULED LOAN APPROVAL AND REJECTION
+    @Override
+    @Scheduled(cron = "0 0 0 */2 * *") // At 00:00 AM, every 2 days
+    @Transactional
+    public void processPendingLoansUpdated() throws DocumentException, MessagingException, IOException, TemplateException {
+        List<Loan> pendingLoans = loanRepository.findByLoanStatus(LoanStatus.Pending);
+        for (Loan loan : pendingLoans) {
+            String reason = conditionforLoanApproval(loan);
+
+            if (reason.isEmpty()) {
+                // All conditions satisfied, approve the loan
+                approveLoanByIdWithFreemarker(loan.getIdLoan());
+            } else {
+                // Any condition not satisfied, reject the loan and send email with the reason
+                rejectLoanAndNotifyUser(loan.getIdLoan());
             }
         }
-        contentStream.showText(key + " : " + value);
-        contentStream.newLineAtOffset(columnWidth, 0); // Déplacement horizontal pour la prochaine colonne
     }
-    contentStream.endText();
 
-    contentStream.close();
-    document.save("D:\\PIDEV PROJECT\\loan_simulation.pdf");
-    document.close();
-}
+    //SCHEDULED UPDATE PaymentDueDates
+    @Scheduled(cron = "0 1 3 * * ?") // Exécute cette méthode tous les jours à 13:00
+
+    @Transactional
+    @Override
+    public void updatePaymentDueDates() {
+        List<Loan> loans = loanRepository.findByLoanStatus(LoanStatus.InProgress); // Trouvez tous les prêts en cours
+        LocalDate today = LocalDate.now();
+        for (Loan loan : loans) {
+            // Calculez directement la date de fin en fonction de la méthode de remboursement
+            LocalDate loanEndDate = loan.getRepaymentMethod() == RepaymentMethod.MENSUALITY
+                    ? loan.getStartDate().plusMonths(loan.getDuration())
+                    : loan.getStartDate().plusYears(loan.getDuration());
+
+            if (loan.getNextPaymentDueDate() != null && !loan.getNextPaymentDueDate().isAfter(today)
+                    && loan.getRemainingBalance() > 0 && loan.getNextPaymentDueDate().isBefore(loanEndDate)) {
+
+                // Mise à jour de la date d'échéance pour le prochain paiement
+                loan.setNextPaymentDueDate(loan.getRepaymentMethod() == RepaymentMethod.MENSUALITY
+                        ? loan.getNextPaymentDueDate().plusMonths(1)
+                        : loan.getNextPaymentDueDate().plusYears(1));
+
+                loanRepository.save(loan);
+            }
+        }
+    }
+
+    //VII-LOAN CONFIRMATION
+    @Override
+    public void confirmLoan(Long idLoan) {
+        Loan loan = loanRepository.findById(idLoan).orElse(null);
+        if (loan != null && loan.getLoanStatus() == LoanStatus.Approved) {
+            loan.setLoanStatus(LoanStatus.InProgress);
+            loanRepository.save(loan);
+        }
+    }
+
+    //VIII-PAYMENT SERVICE FOR LOAN
+    @Override
+    public Transaction processLoanTransactionWithSpecificLoan(Long senderAccountId, Long receiverAccountId, Transaction paymentRequest, Long loanId) throws StripeException {
+
+        Transaction processedTransaction = iAccountService.processTransactionAndAdjustBalance(senderAccountId,receiverAccountId,paymentRequest);
+        Loan loan = loanRepository.findById(loanId).orElse(null);
+
+        if (processedTransaction.getType() == TranType.LOAN_REPAYMENT) {
+            if (loan.getAccount().getIdAccount().equals(senderAccountId) && (loan.getLoanStatus() == LoanStatus.InProgress || loan.getLoanStatus() == LoanStatus.Default)) {
+                loan.setRemainingBalance(loan.getRemainingBalance() - paymentRequest.getAmount());
+                if (loan.getRemainingBalance() <= 0) {
+                    loan.setLoanStatus(LoanStatus.Repaid);
+                }
+                loanRepository.save(loan);
+            }
+        } else if (processedTransaction.getType() == TranType.LOAN_DISBURSEMENT) {
+            if (loan.getAccount().getIdAccount().equals(receiverAccountId) && loan.getLoanStatus() == LoanStatus.Approved) {
+                loan.setLoanStatus(LoanStatus.InProgress);
+                loanRepository.save(loan);
+            }
+        }
 
 
+        if (processedTransaction.getStatus() == TranStatus.COMPLETED) {
+            switch (processedTransaction.getType()) {
+                case LOAN_REPAYMENT:
+                    loan.setRemainingBalance(loan.getRemainingBalance() - processedTransaction.getAmount());
+                    if (loan.getRemainingBalance() <= 0) {
+                        loan.setLoanStatus(LoanStatus.Repaid);
+                    }
+                    break;
+
+                case LOAN_DISBURSEMENT:
+                    if (loan.getLoanStatus() == LoanStatus.Approved) {
+                        loan.setLoanStatus(LoanStatus.InProgress);
+                    }
+                    break;
+
+                default:
+                    // Gérer d'autres types de transactions si nécessaire
+                    break;
+
+            }
+        }
+
+        // Sauvegarder la transaction mise à jour dans la base de données
+        return processedTransaction;
+    }
+
+    //IX-SCHEDULED LOAN PASS TO DEFAULT
+    @Scheduled(cron = "0 0 12 * * ?") // Executes every day at noon
+    public void updateLoansToDefault() {
+        List<Loan> loans = retrieveAllLoans();
+        LocalDate today = LocalDate.now();
+        loans.forEach(loan -> {
+            if (loan.getNextPaymentDueDate() != null &&
+                    loan.getNextPaymentDueDate().isBefore(today) &&
+                    loan.getRemainingBalance() > 0) {
+                loan.setLoanStatus(LoanStatus.Default);
+                loanRepository.save(loan);
+            }
+        });
+    }
+
+    //X-LOAN NOTIFICATIONS
+    @Scheduled(cron = "* 12 * * * ?") // Executed every day at noon
+    public void sendPreDueDateNotifications() {
+        List<Loan> loans = loanRepository.findAllByLoanStatusAndNextPaymentDueDateIsBefore(LoanStatus.InProgress, LocalDate.now().plusWeeks(1));
+        for (Loan loan : loans) {
+            sendPreDueDateNotification(loan.getIdLoan());
+        }
+    }
+    @Override
+    public void sendPreDueDateNotification(Long idLoan) {
+        Loan loan = loanRepository.findById(idLoan).orElse(null);
+        String formattedDate = formatDate(loan.getNextPaymentDueDate());
+        String message = "Reminder: Your next loan payment of $" + loan.getPayment() + " is due on " + formattedDate + ". Please ensure sufficient funds are available.";
+        String userPhoneNumber = loan.getAccount().getProfile().getUser().getPhoneNum();
+        String twilioPhoneNumber = "+14433992522"; // Replace with your Twilio number
+        try {
+            Message.creator(
+                    new PhoneNumber(userPhoneNumber),
+                    new PhoneNumber(twilioPhoneNumber),
+                    message
+            ).create();
+
+            System.out.println("Message envoyé avec succès. ");
+        } catch (Exception e) {
+            System.err.println("Erreur lors de l'envoi du message: " + e.getMessage());
+        }
+    }
 
 }

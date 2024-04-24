@@ -1,43 +1,33 @@
 package esprit.tn.flexifin.serviceInterfaces;
-
+import com.itextpdf.text.DocumentException;
+import com.stripe.exception.StripeException;
 import esprit.tn.flexifin.entities.Loan;
 import esprit.tn.flexifin.entities.LoanStatus;
 import esprit.tn.flexifin.entities.LoanType;
-import org.jetbrains.annotations.NotNull;
+import esprit.tn.flexifin.entities.Transaction;
+import freemarker.template.TemplateException;
+import jakarta.mail.MessagingException;
+import org.springframework.scheduling.annotation.Scheduled;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.time.LocalDate;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+
 public interface ILoanService {
-    List<Loan> retrieveAllLoans();
+
+    double updateTmm(double newTmm);
 
     Loan addLoan(Loan loan);
+    Loan addLoanAssignAccount(Loan loan, Long idAccount);
 
-    Loan updateLoan (Loan loan);
+    List<Loan> retrieveAllLoans();
 
     Loan retrieveLoan (Long idLoan);
 
     void removeLoan(Long idLoan);
-
-    //Map<String, Float> simulateLoan(float amount, int duration, float interestRate);
-
-    //public double calculateLoanCapacity(double monthlyIncome, double monthlyDebtPayments, double monthlyExpenses);
-
-    Map<String, Float> simulateLoan(Loan loan);
-
-     Map<String, Float> simulateLoan2( Loan loan);
-    Map<String, Float> simulateLoanWithConstantAmortizationPerYear( Loan loan);
-    Map<String, Float> simulateLoanWithConstantAmortizationPerMonth(Loan loan);
-
-    Map<String, Float> simulateLoanInFineByYear( Loan loan);
-    Map<String, Float> simulateLoanInFineByMonth( Loan loan);
-
-
-
-    void generatePdf(LinkedHashMap<String, Float> loanSimulation) throws IOException;
 
     List<Loan> getLoanByStatus(LoanStatus status);
 
@@ -46,4 +36,35 @@ public interface ILoanService {
 
     public List<Loan> getLoanByUserId(Long idUser);
 
+
+    double calculatePayment(float amount, double interestRate, int totalPeriods);
+
+    public double calculateLoanCapacity(double monthlyIncome, double monthlyDebtPayments, double monthlyExpenses);
+
+
+    List<String[]> simulateLoanCombined(Loan loan);
+
+    String createLoanSimulationPdf(Loan loan) throws DocumentException, FileNotFoundException;
+
+    void sendEmailWithFreemarkerTemplate(String to, String subject, Map<String, Object> templateModel, String attachmentPath, String templateName) throws MessagingException, IOException, TemplateException;
+
+    public String approveLoanByIdWithFreemarker(Long loanId) throws DocumentException, MessagingException, IOException, TemplateException;
+
+
+    void updatePaymentDueDates();
+
+    public void processPendingLoansUpdated() throws DocumentException, MessagingException, IOException, TemplateException;
+    void confirmLoan(Long idLoan);
+
+
+
+    //Remboursement et Virement de pret (USER-ADMIN account)
+    Transaction processLoanTransactionWithSpecificLoan(Long senderAccountId, Long receiverAccountId, Transaction paymentRequest, Long loanId) throws StripeException;
+
+
+    //NOTIFICATION
+    @Scheduled(cron = "* * * * * ?") // Executed every day at noon
+    void sendPreDueDateNotifications();
+
+    void sendPreDueDateNotification(Long idLoan);
 }

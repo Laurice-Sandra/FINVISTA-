@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 
 
 @Entity
@@ -18,9 +19,12 @@ public class User implements Serializable {
     private Long idUser;
     private String firstName;
 
+    private LocalDate birthDate;
+
     private String lastName;
 
     private String adress;
+    private String email;
 
     private String phoneNum;
     @JsonIgnore

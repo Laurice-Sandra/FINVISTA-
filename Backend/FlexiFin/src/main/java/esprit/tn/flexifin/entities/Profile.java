@@ -20,11 +20,13 @@ public class Profile implements Serializable {
     private Long idProfile;
     private float income;
     private String job;
-
     private Integer score;
+    private Integer loan_history;
+
+
     @JsonIgnore
     @OneToOne(mappedBy = "profile")
-    private Account account ;
+    private Account account;
 
 
     @OneToOne

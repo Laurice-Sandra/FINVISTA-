@@ -16,10 +16,10 @@ public class ProfileRestController {
     public List<Profile> retrieveAllProfiles() {
         return iProfileService.retrieveAllProfiles();
     }
-    @PostMapping("/addProfile")
+    @PostMapping("/addProfile/{idU}")
 
-    public Profile addProfile(@RequestBody Profile profile) {
-        return iProfileService.addProfile(profile);
+    public Profile addProfileforUser(@RequestBody Profile profile,@PathVariable("idU") Long idUser) {
+        return iProfileService.addProfileAssignUser(profile,idUser);
     }
     @PutMapping ("/updateProfile")
     public Profile updateProfile(@RequestBody Profile profile) {

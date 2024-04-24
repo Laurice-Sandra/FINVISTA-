@@ -1,4 +1,4 @@
 package esprit.tn.flexifin.entities;
 
-public class Insurance {
+public enum Currency { eur, usd
 }

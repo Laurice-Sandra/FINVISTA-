@@ -7,9 +7,15 @@ import java.util.List;
 public interface IProfileService {
     List<Profile> retrieveAllProfiles();
 
-    Profile addProfile(Profile profile);
+    Profile addProfileAssignUser(Profile profile,Long idUser);
 
     Profile updateProfile (Profile profile);
 
     Profile retrieveProfile (Long idProfile);
+
+    float calculateLoanHistory(Long profileId);
+
+    float calculateProfileScore(Long idProfile);
+
+    void updateProfileScores(Long profileId);
 }

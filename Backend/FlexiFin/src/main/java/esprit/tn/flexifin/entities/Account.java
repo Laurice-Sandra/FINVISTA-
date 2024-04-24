@@ -27,6 +27,17 @@ public class Account implements Serializable {
     @OneToMany(mappedBy = "account")
     @JsonIgnore
     private Set<Loan> loans ;
+
+    // Transactions où ce compte est l'émetteur
+    @JsonIgnore
+    @OneToMany(mappedBy = "senderAccount")
+    private Set<Transaction> outgoingTransactions;
+
+    // Transactions où ce compte est le destinataire
+    @JsonIgnore
+    @OneToMany(mappedBy = "receiverAccount")
+    private Set<Transaction> incomingTransactions;
+
     @OneToOne
     @JsonIgnore
     private Profile profile;

@@ -1,0 +1,12 @@
+package esprit.tn.flexifin.entities;
+
+public enum TranType {PEER_TO_PEER_TRANSFER,
+    LOAN_DISBURSEMENT,
+    LOAN_REPAYMENT,
+    DEPOSIT_FUND,
+    WITHDRAW_FUND,
+    INSURANCE_PAYMENT,
+    INSURANCE_DISBURSEMENT,
+    FEE_PAYMENT,
+    FUND_TRANSFER,
+}
