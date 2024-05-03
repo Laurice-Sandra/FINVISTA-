@@ -1,0 +1,17 @@
+// sidebar.component.scss
+.list li {
+  transition: background-color 0.3s ease;
+
+  &:hover {
+    background-color: #40c952; // Adjust color based on your theme
+  }
+}
+
+.user-panel img {
+  transition: transform 0.3s ease;
+
+  &:hover {
+    transform: scale(1.1); // Slightly enlarge the user image on hover
+  }
+}
+
