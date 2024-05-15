@@ -10,7 +10,7 @@ public interface IInsuranceService {
      Insurance addInsurance(Insurance i);
      Insurance updateInsurance(Insurance i);
 
-     Insurance retrieveInsurance(Long idUser);
+    List<Insurance> retrieveInsurance(Long idUser);
     void delete(Long idInsurance);
 
 

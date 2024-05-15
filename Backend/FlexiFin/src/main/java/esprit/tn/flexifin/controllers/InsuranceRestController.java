@@ -39,7 +39,7 @@ public class InsuranceRestController {
         return iInsuranceService.updateInsurance(i);
     }
     @GetMapping("/getInsurance/{idUser}")
-    public Insurance retrieveInsurance(Long idUser) {
+    public List<Insurance> retrieveInsurance(@PathVariable ("idUser") Long idUser) {
         return iInsuranceService.retrieveInsurance(idUser);
     }
 }
