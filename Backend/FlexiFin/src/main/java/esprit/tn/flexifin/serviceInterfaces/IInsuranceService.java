@@ -10,7 +10,9 @@ public interface IInsuranceService {
      Insurance addInsurance(Insurance i);
      Insurance updateInsurance(Insurance i);
 
-     Insurance retrieveInsurance(Long idAssurance);
+     Insurance retrieveInsurance(Long idUser);
+    void delete(Long idInsurance);
+
 
     Insurance addInsurance(Insurance a, int cinU, Long idContrat);
 }

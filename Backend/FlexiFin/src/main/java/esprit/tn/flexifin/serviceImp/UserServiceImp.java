@@ -6,15 +6,16 @@ import esprit.tn.flexifin.repositories.InsuranceRepository;
 import esprit.tn.flexifin.repositories.UserRepository;
 import esprit.tn.flexifin.serviceInterfaces.IUserService;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.Date;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @Service
+@Slf4j
 @AllArgsConstructor
 public class UserServiceImp implements IUserService {
     UserRepository userRepository;
@@ -36,15 +37,7 @@ public class UserServiceImp implements IUserService {
 
     public User retrieveUser(Long idUser) {
         return userRepository.findById(idUser).orElse(null);
-
     }
-
-
-
-
-
-
-
 
     @Override
     public float getMontantU(int cinU) {
@@ -68,8 +61,17 @@ public class UserServiceImp implements IUserService {
     }
 
     @Override
+    @Scheduled(cron = "*/60 * * * * *")
     public void statistiques() {
 
+        TreeMap<Integer, Integer> myStat = new TreeMap<>(Collections.reverseOrder());
+
+        for (User u : userRepository.findAll()) {
+            myStat.put(u.getInsurances().size(), u.getCin());
+        }
+        for (Map.Entry<Integer, Integer> va : myStat.entrySet()) {
+            log.info(va.getKey() + "|" + va.getValue());
+        }
     }
 
 

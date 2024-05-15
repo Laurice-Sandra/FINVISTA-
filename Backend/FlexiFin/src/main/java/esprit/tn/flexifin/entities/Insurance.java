@@ -1,5 +1,6 @@
 package esprit.tn.flexifin.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -18,9 +19,13 @@ public class Insurance implements Serializable {
     private int idAssurance;
     private String designation;
     private float montant;
+    private Date startDate= new Date(System.currentTimeMillis());
+    @JsonIgnore
+    @ToString.Exclude
     @ManyToOne(cascade=CascadeType.ALL)
     private InsuranceContrat insuranceContrat;
-    private Date startDate= new Date(System.currentTimeMillis());
+    @JsonIgnore
     @ManyToOne
     private User user;
+
 }

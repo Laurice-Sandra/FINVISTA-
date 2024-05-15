@@ -15,8 +15,6 @@ public interface IUserService {
 
     User retrieveUser (Long idUser);
 
-
-
     float getMontantU(int cinU);
 
     Set<User> getUserByType(TypeContrat tc);

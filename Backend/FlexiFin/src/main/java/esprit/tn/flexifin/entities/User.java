@@ -28,8 +28,9 @@ public class User implements Serializable {
     @JsonIgnore
     @OneToOne(mappedBy = "user")
     private Profile profileUser;
+    @ToString.Exclude
     @OneToMany(mappedBy="user", fetch=FetchType.EAGER)
-        private List<Insurance> insurances;
+    private List<Insurance> insurances;
 
 
 }

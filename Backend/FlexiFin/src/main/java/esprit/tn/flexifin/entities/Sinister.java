@@ -1,5 +1,6 @@
 package esprit.tn.flexifin.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -23,6 +24,4 @@ public class Sinister implements Serializable {
     private String justification;
     private SinisterStatus sinisterStatus;
 
-    @OneToOne(mappedBy = "sinister")
-    private InsuranceContrat insuranceContrat;
 }

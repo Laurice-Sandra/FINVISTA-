@@ -1,14 +1,13 @@
 package esprit.tn.flexifin.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.io.Serializable;
 import java.time.LocalDate;
 import java.util.Date;
+import java.util.List;
 
 @Entity
 @Getter
@@ -22,15 +21,15 @@ public class InsuranceContrat implements Serializable {
     private Long idContrat;
     private float prime;
     private Date startDate= new Date(System.currentTimeMillis());
-    private Date EndDate;
+    private Date endDate;
     @Temporal(TemporalType.DATE)
     private LocalDate dateEffet ;
     @Enumerated(EnumType.STRING)
     private TypeContrat type;
-    private String designation;
-    private float montant;
-    @OneToOne
-    private Sinister sinister;
+    @JsonIgnore
+    @ToString.Exclude
+    @OneToMany(mappedBy = "insuranceContrat", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Insurance> insuranceList;
 
 
 

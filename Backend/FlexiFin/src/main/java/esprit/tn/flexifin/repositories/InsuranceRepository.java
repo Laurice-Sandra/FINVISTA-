@@ -9,9 +9,10 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface InsuranceRepository extends JpaRepository<Insurance, Long> {
-//    @Query("Select SUM(a.montant) From Insurance a where a.beneficiary.idBeneficiary = :id ")
-//    float getMontantAnnuelByBf(@Param("id")int idBf);
-//
-//    @Query("Select SUM(a.montant) From Insurance a where a.insuranceContrat.type = :typeC")
-//    float getSumByType(@Param("typeC") TypeContrat typeContrat);
+    @Query("Select SUM(a.montant) From Insurance a where a.user.idUser = :id ")
+    float getMontantAnnuelByBf(@Param("id")int idU);
+    void deleteById(Long idInsurance);
+
+    @Query("Select SUM(a.montant) From Insurance a where a.insuranceContrat.type = :typeC")
+    float getSumByType(@Param("typeC") TypeContrat typeContrat);
 }

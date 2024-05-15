@@ -68,5 +68,4 @@ public class EmailServiceImpl implements IEmailService {
         javaMailSender.send(messagePreparator);
     }
 
-    }
-
+}

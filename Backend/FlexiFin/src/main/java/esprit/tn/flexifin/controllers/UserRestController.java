@@ -35,9 +35,6 @@ public class UserRestController {
         return iUserService.retrieveUser(idUser);
     }
 
-    //insurance controller
-
-    //insuranceContrat controller
 
         @GetMapping("/getUserByType/{typeC}")
         public Set<User> getUserByType(@PathVariable("typeC") TypeContrat tc) {
@@ -49,8 +46,5 @@ public class UserRestController {
     		return iUserService.getMontantU(cinU);
     	}
 
-        //@PutMapping("/generatetestpdf")
-    //    public String createLoanSimulationPdf(@RequestBody Loan loan) throws DocumentException, FileNotFoundException {
-    //        return iLoanService.createLoanSimulationPdf(loan);
-    //    }
+
 }

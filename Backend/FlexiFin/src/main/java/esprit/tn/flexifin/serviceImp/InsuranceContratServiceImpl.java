@@ -1,5 +1,7 @@
 package esprit.tn.flexifin.serviceImp;
 
+import esprit.tn.flexifin.Dto.MailRequest;
+import esprit.tn.flexifin.Dto.MailResponse;
 import esprit.tn.flexifin.entities.Insurance;
 import esprit.tn.flexifin.entities.InsuranceContrat;
 import esprit.tn.flexifin.entities.TypeContrat;
@@ -11,6 +13,9 @@ import esprit.tn.flexifin.serviceInterfaces.IInsuranceContratService;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
 import jakarta.mail.internet.MimeMessage;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.AllArgsConstructor;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -23,6 +28,7 @@ import org.springframework.web.servlet.view.freemarker.FreeMarkerConfigurer;
 
 import javax.mail.MessagingException;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Date;
@@ -31,16 +37,16 @@ import java.util.Locale;
 import java.util.Map;
 
 @Service
+@AllArgsConstructor
 public class InsuranceContratServiceImpl implements IInsuranceContratService {
     InsuranceRepository insuranceRepository;
     InsuranceContratRepository insuranceContratRepository;
     UserRepository userRepository;
-    private JavaMailSender emailSender;
-    private FreeMarkerConfigurer freemarkerConfigurer;
+
     @Override
     public List<InsuranceContrat> retrieveAllInsuranceContrats() {
-       return insuranceContratRepository.findAll();
-    }
+        return insuranceContratRepository.findAll();
+        }
 
     @Override
     public InsuranceContrat updateInsuranceContrat(InsuranceContrat insuranceContrat) {
@@ -60,8 +66,6 @@ public class InsuranceContratServiceImpl implements IInsuranceContratService {
         return insuranceContratRepository.save(c);
     }
 
-
-
     public Date calculateEndDate(Date startDate, TypeContrat type) {
         LocalDate startLocalDate = startDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
 
@@ -71,7 +75,7 @@ public class InsuranceContratServiceImpl implements IInsuranceContratService {
             case Biannual:
                 return Date.from(startLocalDate.plusMonths(6).atStartOfDay().atZone(ZoneId.systemDefault()).toInstant());
             case Annual:
-                return Date.from(startLocalDate.plusYears(1).atStartOfDay().atZone(ZoneId.systemDefault()).toInstant());
+                return Date.from(startLocalDate.plusYears(12).atStartOfDay().atZone(ZoneId.systemDefault()).toInstant());
             default:
                 return null; // Handle unknown contract types
         }
@@ -93,27 +97,25 @@ public class InsuranceContratServiceImpl implements IInsuranceContratService {
         return insuranceContrat;
     }
 
-//    @Override
-//    public void sendEmailWithFreemarkerTemplate(String to, String subject, Map<String, Object> templateModel,  String templateName) throws  IOException, jakarta.mail.MessagingException, TemplateException {
-//
-//        MimeMessage mimeMessage = emailSender.createMimeMessage();
-//        MimeMessageHelper messageHelper = new MimeMessageHelper(mimeMessage, true);
-//        messageHelper.setFrom("noreply@finvistaflexifin.com");
-//        messageHelper.setTo(to);
-//        messageHelper.setSubject(subject);
-//
-//        //Configuration de FreeMarker
-//        Template freemarkerTemplate = freemarkerConfigurer.getConfiguration().getTemplate(templateName);
-//        String htmlBody = FreeMarkerTemplateUtils.processTemplateIntoString(freemarkerTemplate, templateModel);
-//        messageHelper.setText(htmlBody, true);
-//
-////        //Ajout de la pièce jointe si nécessaire
-////        if (attachmentPath != null && !attachmentPath.isEmpty()) {
-////            FileSystemResource file = new FileSystemResource(attachmentPath);
-////            messageHelper.addAttachment(file.getFilename(), file);
-////        }String attachmentPath,
-//
-//        emailSender.send(mimeMessage);
-//    }
+    @Override
+    public void deleteContrat(Long idContrat) {
+         InsuranceContrat insuranceContrat = insuranceContratRepository.findById(idContrat)
+                .orElseThrow(() -> new EntityNotFoundException("InsuranceContrat not found with id: " + idContrat));
 
+        // Delete the InsuranceContrat entity
+        insuranceContratRepository.delete(insuranceContrat);
+    }
+           // insuranceContratRepository.deleteById(idContrat);
+
+
+
+//  public void removeSkieur(Long numSkieur) {
+//        Skieur skieur = skieurRepository.findById(numSkieur).orElse(null);
+//        if (skieur != null) {
+//            Abonnement abonnement = skieur.getAbonnement();
+//            if (abonnement != null) {
+//                abonnementRepository.delete(abonnement);
+//            }
+//            skieurRepository.delete(skieur);
+//        }
 }

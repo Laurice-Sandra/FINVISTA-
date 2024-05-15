@@ -49,9 +49,15 @@ public class InsuranceServiceImp implements IInsuranceService {
     }
 
     @Override
-    public Insurance retrieveInsurance(Long idAssurance) {
-        return insuranceRepository.findById(idAssurance).orElse(null);
+    public Insurance retrieveInsurance(Long idUser) {
+        return insuranceRepository.findById(idUser).orElse(null);
     }
+
+    @Override
+    public void delete(Long idInsurance) {
+        insuranceRepository.deleteById(idInsurance);
+    }
+
     @Override
     public Insurance addInsurance(Insurance a, int cinU, Long idContrat) {
         User user = userRepository.getByCin(cinU);

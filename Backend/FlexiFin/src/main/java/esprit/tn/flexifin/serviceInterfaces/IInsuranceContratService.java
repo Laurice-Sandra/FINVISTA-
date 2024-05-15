@@ -1,5 +1,7 @@
 package esprit.tn.flexifin.serviceInterfaces;
 
+import esprit.tn.flexifin.Dto.MailRequest;
+import esprit.tn.flexifin.Dto.MailResponse;
 import esprit.tn.flexifin.entities.InsuranceContrat;
 import esprit.tn.flexifin.entities.TypeContrat;
 import freemarker.template.TemplateException;
@@ -23,8 +25,8 @@ public interface IInsuranceContratService {
 
     InsuranceContrat retrieveInsuranceContrat (Long idContrat);
     InsuranceContrat getContratU(Long idU);
+    void deleteContrat (Long idContrat);
 
-   // void sendEmailWithFreemarkerTemplate(String to, String subject, Map<String, Object> templateModel, String templateName) throws MessagingException, IOException, TemplateException, jakarta.mail.MessagingException;
 
 }
 
