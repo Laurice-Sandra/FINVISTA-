@@ -5,6 +5,7 @@ import esprit.tn.flexifin.entities.Account;
 import esprit.tn.flexifin.entities.Transaction;
 import esprit.tn.flexifin.serviceInterfaces.IAccountService;
 import lombok.AllArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,8 +23,14 @@ public class AccountRestController {
         return iAccountService.addAccount(account);
     }
 
-    public Account updateAccount(Account account) {
-        return iAccountService.updateAccount(account);
+    @PutMapping("/{id}")
+    public ResponseEntity<Account> updateAccount(@PathVariable(value = "id") Long accountId,
+                                                 @RequestBody Account accountDetails) {
+        Account updatedAccount = iAccountService.updateAccount(accountId, accountDetails);
+        if (updatedAccount == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(updatedAccount);
     }
 
     public Account retrieveAccount(Long idAccount) {
@@ -36,8 +43,11 @@ public class AccountRestController {
         return iAccountService.addAccountForProfile(profileId, account);
     }
 
-    @PostMapping("/accountTransaction/{sendId}/{receivId}")
-    public Transaction AdjustAccountBalanceTransaction(@PathVariable("sendId") Long senderAccountId, @PathVariable("receivId") Long receiverAccountId,@RequestBody Transaction transaction) throws StripeException {
-        return iAccountService.processTransactionAndAdjustBalance(senderAccountId, receiverAccountId, transaction);
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteAccount(@PathVariable(value = "id") Long accountId) {
+        iAccountService.deleteAccount(accountId);
+        return ResponseEntity.ok().build();
     }
+
+
 }

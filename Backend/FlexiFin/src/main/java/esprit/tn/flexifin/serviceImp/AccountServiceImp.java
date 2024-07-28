@@ -1,15 +1,11 @@
 package esprit.tn.flexifin.serviceImp;
 
-import com.stripe.exception.StripeException;
 import esprit.tn.flexifin.entities.Account;
 import esprit.tn.flexifin.entities.Profile;
-import esprit.tn.flexifin.entities.TranStatus;
-import esprit.tn.flexifin.entities.Transaction;
 import esprit.tn.flexifin.repositories.AccountRepository;
 import esprit.tn.flexifin.repositories.ProfileRepository;
 import esprit.tn.flexifin.serviceInterfaces.IAccountService;
 import esprit.tn.flexifin.serviceInterfaces.ITransactionService;
-import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -32,14 +28,27 @@ public class AccountServiceImp implements IAccountService {
         return accountRepository.save(account);
     }
 
+
     @Override
-    public Account updateAccount(Account account) {
-        return accountRepository.save(account);
+    public Account updateAccount(Long id, Account accountDetails) {
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Account not found for this id :: " + id));
+        account.setBalance(accountDetails.getBalance());
+        account.setOpenDate(accountDetails.getOpenDate());
+        final Account updatedAccount = accountRepository.save(account);
+        return updatedAccount;
     }
 
     @Override
     public Account retrieveAccount(Long idAccount) {
         return accountRepository.findById(idAccount).orElse(null);
+
+    }
+    @Override
+    public void deleteAccount(Long accountId){
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new RuntimeException("Account not found for this id :: " + accountId));
+        accountRepository.delete(account);
 
     }
 
@@ -49,7 +58,7 @@ public class AccountServiceImp implements IAccountService {
         return accountRepository.save(account);
     }
 
-    @Override
+   /* @Override
     @Transactional
     public Transaction processTransactionAndAdjustBalance(Long senderAccountId, Long receiverAccountId, Transaction transaction) throws StripeException {
         // Récupérer les comptes de l'expéditeur et du destinataire
@@ -95,7 +104,7 @@ public class AccountServiceImp implements IAccountService {
         processedTransaction.setReceiverAccount(receiverAccount);
         // Assuming you're setting a default or null value for sender account or handling it accordingly
         return processedTransaction;
-    }
+    }*/
 
 
 

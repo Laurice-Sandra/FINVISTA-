@@ -6,7 +6,12 @@ import esprit.tn.flexifin.entities.Transaction;
 import java.util.List;
 
 public interface ITransactionService {
-    List<Transaction> retrieveAllTransactions();
+    Transaction createTransaction(Transaction transaction);
+
+    List<Transaction> getAllTransactions();
+
+
+    /*List<Transaction> retrieveAllTransactions();
 
     Transaction addTransaction(Transaction transaction);
 
@@ -14,7 +19,7 @@ public interface ITransactionService {
 
     Transaction retrieveTransaction(Long idTransaction);
 
-    Transaction processPayment(Transaction paymentRequest) throws StripeException;
+    Transaction processPayment(Transaction paymentRequest) throws StripeException;*/
 
 
 

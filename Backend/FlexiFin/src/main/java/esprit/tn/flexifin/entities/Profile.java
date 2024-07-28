@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.io.Serializable;
+import java.util.List;
+
 @Entity
 @Getter
 @Setter
@@ -32,6 +34,9 @@ public class Profile implements Serializable {
     @OneToOne
     @JsonIgnore
     private User user;
+
+    @OneToMany(mappedBy="profile", fetch=FetchType.EAGER)
+    private List<Insurance> insurances;
 
 
 

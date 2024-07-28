@@ -59,7 +59,7 @@ public interface ILoanService {
 
 
     //Remboursement et Virement de pret (USER-ADMIN account)
-    Transaction processLoanTransactionWithSpecificLoan(Long senderAccountId, Long receiverAccountId, Transaction paymentRequest, Long loanId) throws StripeException;
+    //Transaction processLoanTransactionWithSpecificLoan(Long senderAccountId, Long receiverAccountId, Transaction paymentRequest, Long loanId) throws StripeException;
 
 
     //NOTIFICATION
