@@ -117,10 +117,10 @@ public class LoanRestController {
         iLoanService.processPendingLoansUpdated();
         return ResponseEntity.ok("Pending loans updated with success");
     }
-    @PostMapping("/loanTransaction/{send}/{receive}/{idL}")
+   /* @PostMapping("/loanTransaction/{send}/{receive}/{idL}")
     public Transaction processLoanTransactionWithSpecificLoan(@PathVariable("send") Long senderAccountId,@PathVariable("receive") Long receiverAccountId,@RequestBody Transaction paymentRequest, @PathVariable("idL")Long loanId) throws StripeException {
         return iLoanService.processLoanTransactionWithSpecificLoan(senderAccountId, receiverAccountId, paymentRequest, loanId);
-    }
+    }*/
 
     // Endpoint pour tester l'envoi de la notification Twilio
     @GetMapping("/send-reminder/{loanId}")
@@ -132,6 +132,8 @@ public class LoanRestController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to send notification: " + e.getMessage());
         }
     }
+
+
 
 
 }

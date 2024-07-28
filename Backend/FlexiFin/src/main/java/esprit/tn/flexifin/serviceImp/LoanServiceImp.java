@@ -429,7 +429,7 @@ public class LoanServiceImp implements ILoanService {
         }
     }
 
-    //VIII-PAYMENT SERVICE FOR LOAN
+    /*//VIII-PAYMENT SERVICE FOR LOAN
     @Override
     public Transaction processLoanTransactionWithSpecificLoan(Long senderAccountId, Long receiverAccountId, Transaction paymentRequest, Long loanId) throws StripeException {
 
@@ -476,7 +476,7 @@ public class LoanServiceImp implements ILoanService {
 
         // Sauvegarder la transaction mise à jour dans la base de données
         return processedTransaction;
-    }
+    }*/
 
     //IX-SCHEDULED LOAN PASS TO DEFAULT
     @Scheduled(cron = "0 0 12 * * ?") // Executes every day at noon

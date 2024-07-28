@@ -9,15 +9,19 @@ import java.util.List;
 public interface IAccountService {
     List<Account> retrieveAllAccounts();
 
+    void deleteAccount(Long accountId);
+
     Account addAccountForProfile(Long profileId, Account account);
 
     Account addAccount(Account account);
 
-    Account updateAccount (Account account);
+
+
+    Account updateAccount(Long id, Account accountDetails);
 
     Account retrieveAccount (Long idAccount);
 
-    Transaction processTransactionAndAdjustBalance(Long senderAccountId, Long receiverAccountId, Transaction transaction) throws StripeException;
+    /*Transaction processTransactionAndAdjustBalance(Long senderAccountId, Long receiverAccountId, Transaction transaction) throws StripeException;
 
-    Transaction processPaymentToReceiver(Long receiverAccountId, Transaction paymentRequest) throws StripeException;
+    Transaction processPaymentToReceiver(Long receiverAccountId, Transaction paymentRequest) throws StripeException;*/
 }
